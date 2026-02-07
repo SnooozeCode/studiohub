@@ -6,11 +6,12 @@ build-backend = "setuptools.build_meta"
 name = "studiohub"
 version = "0.1.0"
 description = "StudioHub desktop application"
-requires-python = ">=3.10"
+requires-python = ">=3.11,<3.12"
 dependencies = [
     "PySide6",
     "psutil",
     "watchdog",
+    "winsdk",
 ]
 
 [tool.setuptools]

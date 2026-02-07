@@ -10,10 +10,8 @@ from studiohub.constants import APP_VERSION
 from studiohub.hub.main_window import MainWindow
 from studiohub.theme.styles.app_font import apply_base_app_font
 
-# Add project root to path
-ROOT = Path(__file__).resolve().parent
-if str(ROOT) not in sys.path:
-    sys.path.insert(0, str(ROOT))
+from studiohub.config.manager import ConfigManager
+from studiohub.services.media.runner import start_media_worker
 
 
 def setup_application() -> QApplication:
@@ -43,6 +41,10 @@ def main() -> int:
     """
     # Create application
     app = setup_application()
+
+    config = ConfigManager()
+
+    start_media_worker(config)
     
     # Create main window
     window = MainWindow()

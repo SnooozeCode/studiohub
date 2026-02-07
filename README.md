@@ -28,13 +28,13 @@ This version has been refactored from a monolithic 1,757-line file into a clean,
 ### Directory Structure
 
 ```
-app/
+studiohub/
 ├── main.py                          # Application entry point
 ├── constants.py                     # Application constants
 ├── config_manager.py                # Configuration management
 ├── hub/                             # Core application
-│   ├── main_window.py              # Main window (400 lines vs 1,757)
-│   └── dependency_container.py     # Dependency injection
+│   ├── main_window.py               # Main window
+│   └── dependency_container.py      # Dependency injection
 ├── ui/
 │   ├── widgets/                     # Reusable widgets
 │   ├── sidebar/                     # Sidebar components
