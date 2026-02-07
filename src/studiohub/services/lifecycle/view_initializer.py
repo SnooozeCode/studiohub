@@ -39,14 +39,14 @@ class ViewInitializer:
         Returns:
             Dictionary of view_key -> widget
         """
-        from studiohub.hub_views.dashboard_view_qt import DashboardViewQt
-        from studiohub.hub_views.print_manager_view_qt import PrintManagerViewQt
-        from studiohub.hub_views.mockup_generator_view_qt import MockupGeneratorViewQt
-        from studiohub.hub_views.missing_files_view_qt import MissingFilesViewQt
-        from studiohub.hub_views.print_jobs_view_qt import PrintJobsViewQt
-        from studiohub.hub_views.settings_view_qt import SettingsViewQt
-        from studiohub.hub_views.index_log_view_qt import IndexLogViewQt
-        from studiohub.hub_views.print_economics_qt import PrintEconomicsViewQt
+        from studiohub.ui.views.dashboard_view_qt import DashboardViewQt
+        from studiohub.ui.views.print_manager_view_qt import PrintManagerViewQt
+        from studiohub.ui.views.mockup_generator_view_qt import MockupGeneratorViewQt
+        from studiohub.ui.views.missing_files_view_qt import MissingFilesViewQt
+        from studiohub.ui.views.print_jobs_view_qt import PrintJobsViewQt
+        from studiohub.ui.views.settings_view_qt import SettingsViewQt
+        from studiohub.ui.views.index_log_view_qt import IndexLogViewQt
+        from studiohub.ui.views.print_economics_qt import PrintEconomicsViewQt
         
         # Dashboard
         view_dashboard = DashboardViewQt(
