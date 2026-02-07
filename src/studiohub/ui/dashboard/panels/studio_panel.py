@@ -3,9 +3,9 @@ from __future__ import annotations
 from PySide6 import QtWidgets
 from PySide6.QtCore import Qt
 
-from studiohub.theme.styles.utils import repolish
+from studiohub.style.utils.repolish import repolish
 from studiohub.ui.dashboard.components.ledger_bar_row import LedgerBarRow
-from studiohub.theme.styles.typography import apply_typography
+from studiohub.style.typography.rules import apply_typography
 
 class StudioPanel(QtWidgets.QFrame):
     """

@@ -6,7 +6,7 @@ from PySide6 import QtWidgets
 from PySide6.QtCore import Qt
 
 from PySide6.QtGui import QFont
-from studiohub.theme.styles.typography import apply_typography
+from studiohub.style.typography.rules import apply_typography
 
 
 def format_date(date_str: str | None) -> str:

@@ -2,7 +2,7 @@ from PySide6 import QtWidgets, QtCore
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDoubleValidator
 
-from studiohub.theme.styles.utils import repolish
+from studiohub.style.utils.repolish import repolish
 
 
 class ReplacePaperDialog(QtWidgets.QDialog):

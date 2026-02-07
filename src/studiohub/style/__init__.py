@@ -8,7 +8,7 @@ from studiohub.style.stylesheet import build_stylesheet
 from studiohub.style.utils.repolish import repolish_recursive
 
 
-def apply_style(guit 
+def apply_style(
     app: QtWidgets.QApplication,
     *,
     theme_name: str,

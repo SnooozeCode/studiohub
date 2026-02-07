@@ -4,7 +4,7 @@ from pathlib import Path
 from PySide6 import QtWidgets, QtCore
 from PySide6.QtCore import Qt
 
-from studiohub.theme.styles.typography import apply_typography
+from studiohub.style.typography.rules import apply_typography
 from PySide6.QtGui import QFont
 
 class DashboardPrintJobEntry(QtWidgets.QFrame):

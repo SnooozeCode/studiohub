@@ -1,4 +1,4 @@
-from studiohub.theme.styles.utils import with_alpha
+from studiohub.style.utils.colors import with_alpha
 
 
 def build(tokens):

@@ -4,10 +4,10 @@ from typing import Optional, List
 
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt
-from studiohub.ui.rows.layout import configure_view, RowProfile
-from studiohub.ui.rows.queue import QueueRowFactory
+from studiohub.ui.layout.row_layout import configure_view, RowProfile
+from studiohub.ui.layout.queue import QueueRowFactory
 
-from studiohub.theme.styles.typography import apply_view_typography, apply_typography
+from studiohub.style.typography.rules import apply_view_typography, apply_typography
 from PySide6.QtGui import QFont
 
 HEADER_HEIGHT = 40
