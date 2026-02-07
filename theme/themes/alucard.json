@@ -1,0 +1,42 @@
+{ "meta": {"name": "Feather", "author": "SnooozeCo", "version": "1.0" },
+  "colors": {
+    "bg_app": "#FAFAF7",
+    "bg_surface": "#FFFFFF",
+    "bg_sidebar": "#F3F3EE",
+    "bg_header": "#F3F3EE",
+    "bg_status": "#F3F3EE",
+
+    "fg_primary": "#2A2A2A",
+    "fg_muted": "#6B6F76",
+    "fg_disabled": "#B7BCC5",
+
+    "accent_primary": "#5A7FFF",
+    "accent_secondary": "#D14D72",
+    "accent_tertiary": "#3FA7A3",
+
+    "border_subtle": "#E1E4EA",
+    "border_strong": "#C6CBD6",
+
+    "danger": "#D64545",
+    "success": "#3BA272",
+    "warning": "#C89B3C",
+
+    "bg_row_even": "#FFFFFF",
+    "bg_row_odd": "#F3F3EE",
+
+    "icon_primary": "#2A2A2A",
+    "icon_muted": "#6B6F76"
+  },
+  "interaction": {
+    "surface_hover": "rgba(0, 0, 0, 0.035)",
+    "surface_active": "rgba(0, 0, 0, 0.07)",
+
+    "accent_hover": "#6B8CFF",
+    "accent_active": "#4A6EE6",
+
+    "border_hover": "#B6BCC8",
+    "border_focus": "#5A7FFF",
+
+    "scrollbar_handle": "rgba(0, 0, 0, 0.18)"
+  }
+}
