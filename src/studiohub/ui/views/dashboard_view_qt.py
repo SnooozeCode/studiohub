@@ -22,7 +22,7 @@ from studiohub.ui.dashboard.panels.ink_panel import InkPanel
 
 from studiohub.services.dashboard_metrics import DashboardMetrics
 from studiohub.services.media_session_service import MediaSessionService
-from studiohub.theme.styles.typography import apply_typography
+from studiohub.style.styles.typography import apply_typography
 
 
 from studiohub.services.dashboard_metrics_adapter import DashboardMetricsSnapshot

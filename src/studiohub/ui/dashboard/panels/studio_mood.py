@@ -7,7 +7,7 @@ from PySide6 import QtWidgets, QtCore
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QPixmap, QPainter, QFontMetrics, QPalette, QPaintEvent
 
-from studiohub.theme.styles.typography import apply_typography
+from studiohub.style.styles.typography import apply_typography
 
 ART_SIZE = 112
 LINE_SPACING = 6

@@ -14,7 +14,7 @@ from PySide6.QtGui import QColor, QFont
 from PySide6.QtCore import Qt, QSize, Property, QPropertyAnimation, QPoint
 
 from studiohub.ui.icons import render_svg
-from studiohub.theme.styles.typography import apply_typography
+from studiohub.style.styles.typography import apply_typography
 
 ICON_COL_WIDTH = 48
 LABEL_COL_GAP = 12

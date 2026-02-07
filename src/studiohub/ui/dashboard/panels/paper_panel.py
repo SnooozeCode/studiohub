@@ -9,8 +9,8 @@ from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QPalette
 from PySide6.QtSvg import QSvgRenderer
 
 from studiohub.ui.dialogs.replace_paper import ReplacePaperDialog
-from studiohub.theme.styles.utils import repolish
-from studiohub.theme.styles.typography import apply_typography
+from studiohub.style.styles.utils import repolish
+from studiohub.style.styles.typography import apply_typography
 from studiohub.utils.paths import asset_path
 
 

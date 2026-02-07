@@ -65,5 +65,5 @@ class ExampleViewQt(QtWidgets.QFrame):
         # =================================================
         # FINAL POLISH
         # =================================================
-        from studiohub.theme.styles.utils import repolish
+        from studiohub.style.styles.utils import repolish
         repolish(self)

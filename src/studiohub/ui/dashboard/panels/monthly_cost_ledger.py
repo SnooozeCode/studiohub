@@ -5,7 +5,7 @@ from datetime import datetime
 from PySide6 import QtWidgets, QtCore
 from PySide6.QtCore import Qt
 
-from studiohub.theme.styles.typography import apply_typography
+from studiohub.style.styles.typography import apply_typography
 
 
 # ============================================================

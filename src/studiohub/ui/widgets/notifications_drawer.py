@@ -5,7 +5,7 @@ from PySide6 import QtCore, QtWidgets
 from PySide6.QtCore import Qt, QPropertyAnimation, QEasingCurve
 
 from studiohub.constants import UIConstants
-from studiohub.theme.styles.typography import apply_typography
+from studiohub.style.styles.typography import apply_typography
 from studiohub.services.notifications.notification_service import Notification
 
 

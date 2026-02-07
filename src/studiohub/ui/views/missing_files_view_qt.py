@@ -6,8 +6,8 @@ from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIcon, QColor
 
-from studiohub.theme.styles.utils import repolish
-from studiohub.theme.styles.typography import apply_view_typography, apply_header_typography, apply_typography
+from studiohub.style.styles.utils import repolish
+from studiohub.style.styles.typography import apply_view_typography, apply_header_typography, apply_typography
 
 from studiohub.ui.rows.layout import configure_view, RowProfile
 from studiohub.ui.icons import render_svg

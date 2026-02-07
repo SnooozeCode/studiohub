@@ -3,7 +3,7 @@ from __future__ import annotations
 from PySide6 import QtWidgets
 from PySide6.QtCore import Qt
 
-from studiohub.theme.styles.typography import apply_typography
+from studiohub.style.styles.typography import apply_typography
 
 class RecentIndexEvents(QtWidgets.QWidget):
     def __init__(self, parent=None):

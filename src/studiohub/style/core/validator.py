@@ -1,6 +1,6 @@
 # theme/validator.py
 
-from studiohub.theme.themes.schema import REQUIRED_COLOR_KEYS, REQUIRED_INTERACTION_KEYS
+from studiohub.style.themes.schema import REQUIRED_COLOR_KEYS, REQUIRED_INTERACTION_KEYS
 
 
 class ThemeValidationError(RuntimeError):
