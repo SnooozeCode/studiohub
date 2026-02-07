@@ -624,8 +624,14 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         print("[PrintManager] refresh error:", msg)
 
     def on_activated(self):
-        # Ask hub/model to refresh current source
+        self._auto_bind_model()
+
+        if self._model:
+            # 🔑 FORCE refresh instead of relying on hub
+            self._model.refresh(self._source)
+
         self.source_changed.emit(self.current_source())
+
 
 
 

@@ -86,6 +86,7 @@ class MissingFilesViewQt(QtWidgets.QFrame):
         self._data: Dict[str, Any] = {}
         self._index: Dict[str, Any] = {}
         self._icon_cache: Dict[tuple[str, str], QtGui.QIcon] = {}
+        self._has_been_activated = False
 
         # =================================================
         # WIDGETS (NO LAYOUT)
@@ -179,10 +180,11 @@ class MissingFilesViewQt(QtWidgets.QFrame):
         self.btn_patents.clicked.connect(lambda: self.set_source("patents"))
         self.btn_studio.clicked.connect(lambda: self.set_source("studio"))
 
-        source_group = QtWidgets.QButtonGroup(self)
-        source_group.setExclusive(True)
-        source_group.addButton(self.btn_patents)
-        source_group.addButton(self.btn_studio)
+        # Keep group alive (prevents lifetime edge cases)
+        self._source_group = QtWidgets.QButtonGroup(self)
+        self._source_group.setExclusive(True)
+        self._source_group.addButton(self.btn_patents)
+        self._source_group.addButton(self.btn_studio)
 
         # =================================================
         # INIT STATE
@@ -288,8 +290,13 @@ class MissingFilesViewQt(QtWidgets.QFrame):
     # =================================================
 
     def on_activated(self) -> None:
-        # Only render if we already have something meaningful to show.
-        # Otherwise let refresh populate and render once.
+        # 🔑 enforce default only once
+        if not self._has_been_activated:
+            self._source = "patents"
+            self._has_been_activated = True
+
+        self._update_header_buttons()
+
         if self._index and self._data:
             self._render()
             self._apply_column_widths()
@@ -321,12 +328,17 @@ class MissingFilesViewQt(QtWidgets.QFrame):
         self.lbl_status.setVisible(True)
 
     def set_data(self, source: str, data: Dict[str, Any]) -> None:
+        # If the hub pushes data for a different source, adopt it
         if source != self._source:
-            return
+            self._source = source
+            self._update_header_buttons()   # keep toggles in sync
+            # don't emit signals here; this is a passive update
+
         self._data = data or {}
         self.lbl_status.setVisible(False)
         self._render()
         self._apply_column_widths()
+
 
     def set_index(self, index: Dict[str, Any]) -> None:
         self._index = index or {}
@@ -480,6 +492,14 @@ class MissingFilesViewQt(QtWidgets.QFrame):
     def _update_header_buttons(self) -> None:
         self.btn_patents.setChecked(self._source == "patents")
         self.btn_studio.setChecked(self._source == "studio")
+
+        # 🔑 FORCE STYLE REFRESH
+        self.btn_patents.style().unpolish(self.btn_patents)
+        self.btn_patents.style().polish(self.btn_patents)
+
+        self.btn_studio.style().unpolish(self.btn_studio)
+        self.btn_studio.style().polish(self.btn_studio)
+
 
     def _collect_backgrounds(self, sizes_meta: Dict[str, Any]):
         seen: Dict[str, str] = {}

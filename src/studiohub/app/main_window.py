@@ -257,11 +257,32 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Theme changed updates sidebar
         self.theme_changed.connect(self._sidebar._sidebar_on_theme_changed)
+
+        print_view = self._navigation.get_view("print_manager")
+        model = self._deps.print_manager_model
+
+        if print_view:
+            model.scan_finished.connect(print_view.set_data)
+            model.queue_changed.connect(print_view.set_queue)
+            model.last_batch_changed.connect(print_view.set_reprint_available)
+
         
-        # Missing files theme changes
+        # Missing files wiring (model -> view, view -> model)
         missing_view = self._navigation.get_view("missing_files")
         if missing_view:
+            mm = self._deps.missing_model
+
+            # view -> model
+            missing_view.refresh_requested.connect(mm.refresh)
+
+            # model -> view
+            mm.scan_started.connect(lambda src: missing_view.set_loading(src, "Scanning..."))
+            mm.scan_finished.connect(missing_view.set_data)
+            mm.scan_error.connect(missing_view.set_error)
+
+            # theme changes
             self.theme_changed.connect(missing_view.on_theme_changed)
+
     
     def _finalize_startup(self) -> None:
         """Complete application startup."""
@@ -451,21 +472,22 @@ class MainWindow(QtWidgets.QMainWindow):
                 mockup_view.set_queue(queue)
     
     def _on_missing_files_activated(self) -> None:
-        """Handle missing files activation."""
         try:
-            index = self._index_manager.load_index()
             missing_view = self._navigation.get_view("missing_files")
-            if missing_view:
-                missing_view.set_index(index)
-                
-                src = missing_view.current_source()
-                cached = self._deps.missing_model.get_cache(src)
-                
-                if cached is not None:
-                    missing_view.set_data(src, cached)
+            if not missing_view:
+                return
+
+            # ensure index is current
+            index = self._index_manager.load_index()
+            missing_view.set_index(index)
+
+            # let the view request refresh (wired to model.refresh)
+            missing_view.on_activated()
+
         except Exception:
             pass
-    
+
+
     def _on_print_jobs_activated(self) -> None:
         """Handle print jobs activation."""
         try:
