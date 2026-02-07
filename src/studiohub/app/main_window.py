@@ -262,9 +262,18 @@ class MainWindow(QtWidgets.QMainWindow):
         model = self._deps.print_manager_model
 
         if print_view:
+            # model → view (already partially present)
             model.scan_finished.connect(print_view.set_data)
             model.queue_changed.connect(print_view.set_queue)
             model.last_batch_changed.connect(print_view.set_reprint_available)
+
+            # 🔑 view → model (THIS WAS MISSING)
+            print_view.queue_add_requested.connect(model.add_to_queue)
+            print_view.queue_remove_requested.connect(model.remove_from_queue)
+            print_view.queue_clear_requested.connect(model.clear_queue)
+            print_view.send_requested.connect(model.send)
+            print_view.reprint_requested.connect(model.reprint_last_batch)
+
 
         
         # Missing files wiring (model -> view, view -> model)
