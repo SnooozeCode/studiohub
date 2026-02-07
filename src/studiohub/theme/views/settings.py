@@ -153,8 +153,7 @@ def build(tokens):
         background-color: transparent;
         border: none;
         color: {with_alpha(tokens.text_primary, 0.55)};
-        qproperty-icon: url("assets/icons/edit.svg");
-        qproperty-iconSize: 16px 16px;
+
     }}
 
     #SettingsView QToolButton#IconButton:hover {{

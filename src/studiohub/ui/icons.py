@@ -11,30 +11,29 @@ ICON_ROOT = ROOT / "assets" / "icons"
 # -------------------------------------------------
 # Semantic icon registry
 # -------------------------------------------------
+from pathlib import Path
+from studiohub.utils.paths import asset_path
 
 ICONS = {
-    # Sidebar
-    "menu": ICON_ROOT / "sidebar" / "menu.svg",
-    "dashboard": ICON_ROOT / "sidebar" / "dashboard.svg",
-    "print_manager": ICON_ROOT / "sidebar" / "printer.svg",
-    "print_economics": ICON_ROOT / "sidebar" / "economics.svg",
-    "mockup_generator": ICON_ROOT / "sidebar" / "mockup.svg",
-    "missing_files": ICON_ROOT / "sidebar" / "warning.svg",
-    "caret-right": ICON_ROOT / "sidebar" / "chevron-right.svg",
-    "caret-down": ICON_ROOT / "sidebar" / "chevron-down.svg",
-    "expand": ICON_ROOT / "sidebar" / "plus.svg",
-    "notification": ICON_ROOT / "sidebar" / "notification.svg",
-    # Sidebar Footer
-    "refresh": ICON_ROOT / "sidebar" / "refresh.svg",
-    "theme_to_light": ICON_ROOT / "sidebar" / "light.svg",
-    "theme_to_dark": ICON_ROOT / "sidebar" / "dark.svg",
-    "settings": ICON_ROOT / "sidebar" / "settings.svg",
-    # Missing Files
-    "status_ok": ICON_ROOT / "sidebar" / "okay.svg",
-    "status_missing": ICON_ROOT / "sidebar" / "missing.svg",
-    # Settings
-    "edit": ICON_ROOT / "edit.svg",
+    "menu": Path(asset_path("icons", "sidebar", "menu.svg")),
+    "dashboard": Path(asset_path("icons", "sidebar", "dashboard.svg")),
+    "print_manager": Path(asset_path("icons", "sidebar", "printer.svg")),
+    "print_economics": Path(asset_path("icons", "sidebar", "economics.svg")),
+    "mockup_generator": Path(asset_path("icons", "sidebar", "mockup.svg")),
+    "missing_files": Path(asset_path("icons", "sidebar", "warning.svg")),
+    "caret-right": Path(asset_path("icons", "sidebar", "chevron-right.svg")),
+    "caret-down": Path(asset_path("icons", "sidebar", "chevron-down.svg")),
+    "expand": Path(asset_path("icons", "sidebar", "plus.svg")),
+    "notification": Path(asset_path("icons", "sidebar", "notification.svg")),
+    "refresh": Path(asset_path("icons", "sidebar", "refresh.svg")),
+    "theme_to_light": Path(asset_path("icons", "sidebar", "light.svg")),
+    "theme_to_dark": Path(asset_path("icons", "sidebar", "dark.svg")),
+    "settings": Path(asset_path("icons", "sidebar", "settings.svg")),
+    "status_ok": Path(asset_path("icons", "sidebar", "okay.svg")),
+    "status_missing": Path(asset_path("icons", "sidebar", "missing.svg")),
+    "edit": Path(asset_path("icons", "edit.svg")),
 }
+
 
 # -------------------------------------------------
 # SVG renderer

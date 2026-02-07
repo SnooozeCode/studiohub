@@ -9,6 +9,7 @@ from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QPalette
 from PySide6.QtSvg import QSvgRenderer
 
 from studiohub.theme.styles.typography import apply_typography
+from studiohub.utils.paths import asset_path
 
 class InkPanel(QtWidgets.QWidget):
     """
@@ -77,7 +78,7 @@ class InkPanel(QtWidgets.QWidget):
         accent = self.palette().color(QPalette.Highlight)
         self.btn_replace.setIcon(
             InkPanel.tinted_svg_icon(
-                "assets/icons/replace.svg",
+                asset_path("icons", "replace.svg"),
                 accent,
                 QtCore.QSize(16, 16),
             )

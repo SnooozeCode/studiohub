@@ -11,6 +11,7 @@ from PySide6.QtSvg import QSvgRenderer
 from studiohub.ui.dialogs.replace_paper import ReplacePaperDialog
 from studiohub.theme.styles.utils import repolish
 from studiohub.theme.styles.typography import apply_typography
+from studiohub.utils.paths import asset_path
 
 
 class PaperPanel(QtWidgets.QWidget):
@@ -80,7 +81,7 @@ class PaperPanel(QtWidgets.QWidget):
         accent = self.palette().color(QPalette.Highlight)
         self.btn_replace.setIcon(
             self.tinted_svg_icon(
-                "assets/icons/replace.svg",
+                asset_path("icons", "replace.svg"),
                 accent,
                 QtCore.QSize(16, 16),
             )
