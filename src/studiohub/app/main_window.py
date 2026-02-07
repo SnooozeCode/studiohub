@@ -18,8 +18,8 @@ from studiohub.services.lifecycle.view_initializer import ViewInitializer
 from studiohub.ui.widgets.notifications_drawer import NotificationsDrawer
 from studiohub.ui.widgets.click_catcher import ClickCatcher
 from studiohub.ui.sidebar.sidebar import Sidebar
-from studiohub.style import apply_theme as apply_app_theme
-from studiohub.style.styles.typography import apply_typography
+from studiohub.style import apply_style as apply_app_theme
+from studiohub.style.typography.rules import apply_typography
 
 
 class MainWindow(QtWidgets.QMainWindow):

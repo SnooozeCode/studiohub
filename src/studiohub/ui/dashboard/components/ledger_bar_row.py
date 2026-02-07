@@ -3,9 +3,9 @@ from __future__ import annotations
 from PySide6 import QtWidgets
 from PySide6.QtCore import Qt
 
-from studiohub.style.styles.utils import repolish
+from studiohub.style.utils.repolish import repolish
 from PySide6.QtGui import QFont
-from studiohub.style.styles.typography import apply_typography, BASE_PX
+from studiohub.style.typography.rules import apply_typography, BASE_PX
 
 
 # ============================================================

@@ -4,8 +4,8 @@ from PySide6 import QtWidgets, QtCore, QtGui
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QDoubleValidator
 
-from studiohub.style.styles.typography import apply_typography
-from studiohub.style.styles.utils import repolish
+from studiohub.style.typography.rules import apply_typography
+from studiohub.style.utils.repolish import repolish
 
 
 class PrintFailedDialog(QtWidgets.QDialog):

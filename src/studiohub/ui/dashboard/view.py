@@ -8,7 +8,7 @@ from PySide6.QtCore import Qt
 
 from studiohub.ui.dashboard.cards import DashboardCard, KPICard, ConsumableKPICard
 from studiohub.ui.dashboard.panels.print_count_panel import PatentsVsStudioChart
-from studiohub.ui.rows.layout import configure_view, RowProfile
+from studiohub.ui.layout.row_layout import configure_view, RowProfile
 from studiohub.services.dashboard_metrics import DashboardMetrics
 from studiohub.ui.dashboard.panels.monthly_cost_ledger import MonthlyCostLedgerPanel, MonthlyCostBreakdown
 

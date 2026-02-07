@@ -9,8 +9,8 @@ from PySide6.QtGui import QIntValidator
 
 from studiohub.services.paper_ledger import PaperLedger
 
-from studiohub.style.styles.typography import apply_typography
-from studiohub.style.styles.utils import repolish
+from studiohub.style.typography.rules import apply_typography
+from studiohub.style.utils.repolish import repolish
 
 from studiohub.ui.dialogs.replace_paper import ReplacePaperDialog
 from studiohub.ui.icons import render_svg
@@ -243,7 +243,7 @@ class SettingsViewQt(QtWidgets.QFrame):
         # =================================================
         # FINAL POLISH
         # =================================================
-        from studiohub.style.styles.utils import repolish
+        from studiohub.style.utils.repolish import repolish
         repolish(self)
         repolish(self.scroll)
         repolish(self.content)
@@ -1017,7 +1017,7 @@ class SettingsViewQt(QtWidgets.QFrame):
     # Ops toggle sync (schema does not yet have mockup_generator)
     # =========================================================
 
-    from studiohub.style.styles.utils import repolish
+    from studiohub.style.utils.repolish import repolish
 
     def highlight_missing_paths(self, missing_keys: list[str]) -> None:
         """

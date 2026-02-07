@@ -8,8 +8,8 @@ from PySide6 import QtWidgets, QtCore
 from PySide6.QtCore import Qt
 
 from studiohub.services.print_log_state import PrintJobRecord
-from studiohub.style.styles.typography import apply_typography
-from studiohub.style.styles.utils import repolish
+from studiohub.style.typography.rules import apply_typography
+from studiohub.style.utils.repolish import repolish
 
 
 # =====================================================

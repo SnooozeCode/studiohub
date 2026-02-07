@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from studiohub.style.styles.utils import with_alpha
+from studiohub.style.utils.colors import with_alpha
 
 
 @dataclass(frozen=True)

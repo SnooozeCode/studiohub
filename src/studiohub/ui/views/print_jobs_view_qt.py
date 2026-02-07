@@ -15,8 +15,8 @@ from studiohub.ui.delegates.failed_icon_delegate import FailedIconDelegate
 from studiohub.ui.dialogs.print_failed import PrintFailedDialog
 from studiohub.ui.dialogs.reprint_dialog import ReprintDialog, ReprintRequest
 
-from studiohub.style.styles.typography import apply_header_typography, apply_view_typography
-from studiohub.style.styles.utils import repolish
+from studiohub.style.typography.rules import apply_header_typography, apply_view_typography
+from studiohub.style.utils.repolish import repolish
 
 
 class PrintJobsViewQt(QtWidgets.QFrame):

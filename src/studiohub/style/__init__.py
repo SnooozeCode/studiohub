@@ -1,22 +1,33 @@
+from __future__ import annotations
+
 from PySide6 import QtWidgets
 
-from .core.loader import load_theme
-from .core.tokens import build_tokens, ThemeTokens
-from .stylesheet import build_stylesheet
-from .styles.utils import repolish_recursive
+from studiohub.style.tokens.loader import load_theme
+from studiohub.style.tokens.tokens import build_tokens, ThemeTokens
+from studiohub.style.stylesheet import build_stylesheet
+from studiohub.style.utils.repolish import repolish_recursive
 
 
-def apply_theme(
+def apply_style(
     app: QtWidgets.QApplication,
     *,
     theme_name: str,
     root: QtWidgets.QWidget | None = None,
 ) -> ThemeTokens:
+    """
+    Apply the application style system.
+
+    Responsibilities:
+    - Load theme definition
+    - Build design tokens
+    - Apply QSS stylesheet
+    - Trigger widget repolish if needed
+    """
+
     theme = load_theme(theme_name)
     tokens = build_tokens(theme)
 
-    app.setProperty("theme_tokens", tokens)
-
+    app.setProperty("style_tokens", tokens)
     app.setProperty("theme", theme_name)
     app.setStyleSheet(build_stylesheet(tokens))
 

@@ -4,7 +4,7 @@ import sys
 from PySide6.QtWidgets import QApplication
 
 from studiohub.app.main_window import MainWindow
-from studiohub.style.styles.app_font import apply_base_app_font
+from studiohub.style.typography.fonts import apply_base_app_font
 from studiohub.constants import APP_VERSION
 
 

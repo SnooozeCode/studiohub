@@ -5,7 +5,7 @@ from typing import List, Dict
 from PySide6 import QtCore, QtWidgets
 from PySide6.QtGui import QFont
 
-from studiohub.style.styles.typography import apply_typography
+from studiohub.style.typography.rules import apply_typography
 
 
 class QueueRowFactory:

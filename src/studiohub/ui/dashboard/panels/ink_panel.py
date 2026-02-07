@@ -8,7 +8,7 @@ from PySide6.QtWidgets import QToolButton
 from PySide6.QtGui import QIcon, QPixmap, QPainter, QColor, QPalette
 from PySide6.QtSvg import QSvgRenderer
 
-from studiohub.style.styles.typography import apply_typography
+from studiohub.style.typography.rules import apply_typography
 from studiohub.utils.paths import asset_path
 
 class InkPanel(QtWidgets.QWidget):
