@@ -10,7 +10,7 @@ from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtCore import Qt
 
 from studiohub.constants import UIConstants, APP_VERSION
-from studiohub.hub.dependency_container import DependencyContainer, Dependencies
+from studiohub.app.dependency_container import DependencyContainer, Dependencies
 from studiohub.services.navigation.navigation_service import NavigationService
 from studiohub.services.index.index_manager import IndexManager
 from studiohub.services.lifecycle.startup_manager import StartupManager

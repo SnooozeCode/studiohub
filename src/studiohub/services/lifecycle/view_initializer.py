@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 from PySide6 import QtCore, QtWidgets
 
 if TYPE_CHECKING:
-    from studiohub.hub.dependency_container import Dependencies
+    from studiohub.app.dependency_container import Dependencies
 
 
 class ViewInitializer:
