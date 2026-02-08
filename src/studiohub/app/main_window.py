@@ -248,7 +248,11 @@ class MainWindow(QtWidgets.QMainWindow):
             dashboard.replace_paper_requested.connect(
                 self._on_replace_paper_requested
             )
-        
+
+        dashboard.open_print_log_requested.connect(
+            lambda: self._navigate_to("print_jobs")
+        )
+
         # Index manager signals
         self._index_manager.index_started.connect(self._on_index_started)
         self._index_manager.index_finished.connect(self._on_index_finished)

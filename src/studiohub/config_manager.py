@@ -1,13 +1,7 @@
 """
-LEGACY SHIM — DO NOT ADD LOGIC HERE.
+LEGACY SHIM — temporary compatibility layer.
 
-This file exists temporarily to preserve backwards compatibility
-for imports like:
-
-    from config_manager import ConfigManager
-
-All real implementation now lives in:
-    studiohub.config.manager
+Do not add logic here.
 """
 
-from studiohub.config.manager import *
+from studiohub.config.manager import ConfigManager
