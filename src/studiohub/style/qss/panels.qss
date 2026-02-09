@@ -4,7 +4,7 @@ Panels & Headers
 
 QFrame[role="panel"] {
     background-color: __BG_SURFACE__;
-    border: 1px solid __SCROLLBAR_HANDLE__;
+    border: 1px solid __BG_SURFACE__;
     border-top-left-radius: 10px;
     border-bottom-left-radius: 10px;
 }
@@ -19,7 +19,7 @@ QFrame[role="divider"] {
 }
 
 QFrame[role="section-divider"] {
-    background-color: __SCROLLBAR_HANDLE__;
+    background-color: __BG_SURFACE__;
 }
 
 
