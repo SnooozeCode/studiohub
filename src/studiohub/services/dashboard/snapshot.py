@@ -61,10 +61,9 @@ class MonthlyCostBreakdown:
 
 
 @dataclass(frozen=True)
-class LastIndexSlice:
-    """Used by 'Last Index' KPI card subtitle / health indicator."""
-    subtitle: Optional[str]          # "Up to Date" | "Out of Date" | None
-    last_event_time: Optional[datetime]
+class StudioMoodSlice:
+    mood: str          # "stressed" | "productive" | "idle" | etc
+    label: str         # Human-facing summary
 
 @dataclass(frozen=True)
 class IndexSlice:
@@ -84,7 +83,7 @@ class IndexSlice:
 class DashboardSnapshot:
     archive: CompletenessSlice
     studio: CompletenessSlice
-    index: LastIndexSlice
+    studio_mood: StudioMoodSlice
 
     monthly_print_count: MonthlyPrintCountSlice
     recent_prints: list[dict]

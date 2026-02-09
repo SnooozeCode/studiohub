@@ -19,7 +19,7 @@ from studiohub.services.dashboard.snapshot import (
     CompletenessSlice,
     MonthlyPrintCountSlice,
     MonthlyCostBreakdown,
-    LastIndexSlice,
+    StudioMoodSlice,
 )
 
 # ==================================================
@@ -40,6 +40,10 @@ class BaseDashboardPanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
 
+        layout = QVBoxLayout(self)
+        layout.setSpacing(6)
+        layout.setContentsMargins(0, 0, 0, 0)
+
         self.primary = QLabel()
         self.primary.setObjectName("PanelPrimary")
 
@@ -53,9 +57,6 @@ class BaseDashboardPanel(QWidget):
         self.placeholder = QLabel("—")
         self.placeholder.setObjectName("PanelPlaceholder")
         self.placeholder.hide()
-
-        layout = QVBoxLayout(self)
-        layout.setSpacing(6)
 
         layout.addWidget(self.primary)
         layout.addWidget(self.secondary)
@@ -124,7 +125,6 @@ class ContentHealthPanel(BaseDashboardPanel):
     """
     Combined health view for Archive + Studio content.
     """
-
     def set_data(
         self,
         archive: CompletenessSlice,
@@ -268,22 +268,16 @@ class RecentIndexEventsPanel(QWidget):
 # KPI / Last Index Panel
 # ==================================================
 
-class LastIndexPanel(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._label = QLabel()
-        layout = QVBoxLayout(self)
-        layout.addWidget(self._label)
+class StudioMoodPanel(BaseDashboardPanel):
+    def set_data(self, data: StudioMoodSlice) -> None:
+        self.primary.setText(data.label)
+        self.secondary.hide()
+        self.meta.hide()
 
-    def set_data(self, data: LastIndexSlice) -> None:
-        if not data.subtitle:
-            self._label.setText("Index: —")
-        else:
-            self._label.setText(f"Index: {data.subtitle}")
+        # semantic hook for QSS
+        self.primary.setProperty("mood", data.mood)
+        self.primary.style().polish(self.primary)
 
-# ==================================================
-# New Panels (Stubs)
-# ==================================================
 
 class RevenuePanel(QWidget):
     def __init__(self, parent=None):

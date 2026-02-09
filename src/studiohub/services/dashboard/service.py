@@ -15,7 +15,7 @@ from studiohub.services.dashboard.snapshot import (
     PaperSlice,
     InkSlice,
     MonthlyCostBreakdown,
-    IndexSlice,
+    StudioMoodSlice,
 )
 
 
@@ -105,31 +105,22 @@ class DashboardService:
         Build and return a complete dashboard snapshot.
         """
 
-        # Completeness
         archive, studio = self._build_completeness()
-
-        # Operational metrics
         monthly_print_count = self._monthly_print_count()
-        paper = self._build_paper()
-        ink = self._build_ink()
 
-        # Costs
-        monthly_costs = self._build_monthly_costs()
-
-        # History
-        recent_prints = self._build_recent_prints()
-        recent_index_events = self._build_recent_index_events()
-
-        # Index KPI
-        index = self._build_index()
+        studio_mood = self._build_studio_mood(
+            archive=archive,
+            studio=studio,
+            monthly=monthly_print_count,
+        )
 
         return DashboardSnapshot(
             archive=archive,
             studio=studio,
-            index=index,
+            studio_mood=studio_mood,
             monthly_print_count=monthly_print_count,
-            recent_prints=recent_prints,
-            monthly_costs=monthly_costs,
+            recent_prints=self._build_recent_prints(),
+            monthly_costs=self._build_monthly_costs(),
             revenue=None,
             notes=None,
         )
@@ -211,6 +202,34 @@ class DashboardService:
             missing_files=int(missing_files),
             complete_fraction=float(max(0.0, min(1.0, frac))),
         )
+    
+    def _build_studio_mood(
+        self,
+        *,
+        archive: CompletenessSlice,
+        studio: CompletenessSlice,
+        monthly: MonthlyPrintCountSlice,
+    ) -> StudioMoodSlice:
+        """
+        High-level qualitative state of the studio.
+        """
+
+        if studio.complete_fraction < 0.5:
+            mood = "stressed"
+            label = "Studio is stressed"
+        elif monthly.delta_total > 0:
+            mood = "productive"
+            label = "Studio is productive"
+        else:
+            mood = "idle"
+            label = "Studio is idle"
+
+        return StudioMoodSlice(
+            mood=mood,
+            label=label,
+        )
+
+
 
     # --------------------------------------------------------
     # Monthly Print Count (this month vs last month)
@@ -587,99 +606,6 @@ class DashboardService:
             )
 
         return out
-
-
-    # --------------------------------------------------------
-    # Recent index events (matches your panel expectations)
-    # --------------------------------------------------------
-
-    def _get_recent_index_events(self, limit: int = 5) -> list[dict]:
-        events: list[dict] = []
-
-        path = self._index_log_path
-        if not path or not path.exists():
-            return events
-
-        try:
-            with path.open("r", encoding="utf-8") as f:
-                for line in f:
-                    line = line.strip()
-                    if not line:
-                        continue
-                    try:
-                        entry = json.loads(line)
-                    except json.JSONDecodeError:
-                        continue
-
-                    if entry.get("schema") != "index_log_v1":
-                        continue
-
-                    ts = _parse_iso(entry.get("timestamp"))
-                    if not ts:
-                        continue
-
-                    events.append({
-                        "patents": entry.get("patents_count", 0),
-                        "studio": entry.get("studio_count", 0),
-                        "timestamp": ts,
-                        "status": entry.get("status"),
-                    })
-        except Exception:
-            return []
-
-        events.sort(key=lambda e: e["timestamp"], reverse=True)
-        return events[:limit]
-
-    def _build_recent_index_events(self) -> list[dict]:
-        """
-        Build recent index events for dashboard panels.
-        """
-        events = self._get_recent_index_events(limit=5)
-
-        out: list[dict] = []
-        for ev in events:
-            if not isinstance(ev, dict):
-                continue
-
-            ts = ev.get("timestamp", "")
-            kind = ev.get("type") or ev.get("event") or "index"
-            detail = ev.get("detail") or ev.get("message") or ""
-
-            label = f"{kind}: {detail}".strip(": ")
-
-            out.append(
-                {
-                    "timestamp": ts,
-                    "label": label or "Index event",
-                    "raw": ev,
-                }
-            )
-
-        return out
-
-    def _build_index(self) -> IndexSlice:
-        events = self._get_recent_index_events(limit=1)
-
-        if not events:
-            return IndexSlice(
-                title="Index",
-                subtitle="No index activity",
-                status="unknown",
-                timestamp=None,
-            )
-
-        ev = events[0]
-
-        status = ev.get("status") or ev.get("result") or "ok"
-        subtitle = ev.get("message") or ev.get("detail") or "Index updated"
-
-        return IndexSlice(
-            title="Index",
-            subtitle=subtitle,
-            status=status,
-            timestamp=ev.get("timestamp"),
-        )
-
 
 
     # --------------------------------------------------------

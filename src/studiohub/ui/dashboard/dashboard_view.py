@@ -10,7 +10,7 @@ from studiohub.ui.dashboard.dashboard_panels import (
     PrintReadinessPanel,
     MonthlyPrintCountsPanel,
     MonthlyCostPanel,
-    LastIndexPanel,
+    StudioMoodPanel,
     RevenuePanel,
     NotesPanel,
     NewPrintJobPanel,
@@ -35,7 +35,7 @@ class DashboardView(QWidget):
         # Row 1 — status
         self.content_health_panel = ContentHealthPanel()
         self.print_readiness_panel = PrintReadinessPanel()
-        self.studio_mood_panel = LastIndexPanel()
+        self.studio_mood_panel = StudioMoodPanel()
 
         # Row 2 — operations
         self.new_print_job_panel = NewPrintJobPanel()
@@ -114,7 +114,7 @@ class DashboardView(QWidget):
         # Row 1
         self.content_health_panel.set_data(snapshot.archive, snapshot.studio)
         self.print_readiness_panel.set_data(snapshot.studio)
-        self.studio_mood_panel.set_data(snapshot.index)
+        self.studio_mood_panel.set_data(snapshot.studio_mood)
 
         # Row 2
         self.monthly_print_counts_panel.set_data(snapshot.monthly_print_count)
