@@ -1,0 +1,118 @@
+/* ============================
+Buttons (Global)
+============================ */
+
+QPushButton {
+    padding: 6px 12px;
+    background-color: __BG_SURFACE__;
+    color: __TEXT_PRIMARY__;
+    letter-spacing: 1px;
+    border: none;
+}
+
+QPushButton:hover {
+    background-color: __SURFACE_HOVER__;
+}
+
+QPushButton:pressed {
+    background-color: __SURFACE_ACTIVE__;
+}
+
+QPushButton:disabled {
+    color: __TEXT_DISABLED__;
+    background-color: __BG_APP__;
+}
+
+
+/* ============================
+Primary Action Buttons
+============================ */
+
+QPushButton[primary="true"] {
+    background-color: __ACCENT__;
+    color: __TEXT_PRIMARY__;
+}
+
+QPushButton[primary="true"]:hover {
+    background-color: __ACCENT_HOVER__;
+}
+
+QPushButton[primary="true"]:pressed {
+    background-color: __ACCENT_ACTIVE__;
+}
+
+
+/* ============================
+Source / Mode Toggle Buttons
+============================ */
+
+QPushButton#SourceToggle {
+    min-height: 20px;
+    padding: 6px 14px;
+    background-color: __BG_SURFACE__;
+    color: __TEXT_MUTED__;
+    font-weight: 600;
+    border-radius: 6px;
+}
+
+QPushButton#SourceToggle:hover {
+    background-color: __SURFACE_HOVER__;
+    color: __TEXT_PRIMARY__;
+}
+
+QPushButton#SourceToggle:checked {
+    background-color: __ACCENT__;
+    color: __TEXT_PRIMARY__;
+    font-weight: 700;
+}
+
+QPushButton#SourceToggle:checked:hover {
+    background-color: __ACCENT_HOVER__;
+}
+
+QPushButton#SourceToggle:pressed {
+    background-color: __SURFACE_ACTIVE__;
+}
+
+QPushButton#SourceToggle:disabled {
+    color: __TEXT_DISABLED__;
+    background-color: __BG_SURFACE__;
+}
+
+
+/* --- Danger variant --- */
+
+QPushButton#SourceToggle[danger="true"] {
+    background-color: __DANGER_HOVER__;
+    color: __TEXT_PRIMARY__;
+}
+
+QPushButton#SourceToggle[danger="true"]:hover {
+    background-color: __DANGER__;
+}
+
+QPushButton#SourceToggle[danger="true"]:pressed {
+    background-color: __DANGER_ACTIVE__;
+}
+
+
+/* ============================
+Drawer Handle
+============================ */
+
+QToolButton[role="drawer-handle"] {
+    background-color: __SURFACE_HOVER__;
+    border: none;
+    padding: 0;
+    letter-spacing: 2px;
+    color: __TEXT_MUTED__;
+}
+
+QToolButton[role="drawer-handle"]:hover {
+    background-color: __SURFACE_ACTIVE__;
+}
+
+QToolButton[role="drawer-handle"]:checked {
+    background-color: __ACCENT__;
+    color: __BG_APP__;
+}

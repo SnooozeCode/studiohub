@@ -1,0 +1,43 @@
+/* ============================
+Panels & Headers
+============================ */
+
+QFrame[role="panel"] {
+    background-color: __BG_SURFACE__;
+    border: 1px solid __SCROLLBAR_HANDLE__;
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+}
+
+QFrame[role="table-header"] {
+    border-bottom: 1px solid __SCROLLBAR_HANDLE__;
+}
+
+QFrame[role="divider"] {
+    background-color: __TEXT_MUTED__;
+    min-height: 1px;
+}
+
+QFrame[role="section-divider"] {
+    background-color: __SCROLLBAR_HANDLE__;
+}
+
+
+/* ============================
+Panel Surfaces
+============================ */
+
+QFrame#DashboardCard {
+    background-color: __BG_SURFACE__;
+    border-radius: 7px;
+}
+
+QFrame[role="stat-card"] {
+    background-color: __BG_SURFACE__;
+    border-radius: 7px;
+}
+
+QFrame[role="panel"][variant="missing-table"] {
+    border: none;
+    border-radius: 0;
+}

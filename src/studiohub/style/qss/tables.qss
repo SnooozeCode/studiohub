@@ -1,0 +1,114 @@
+/* ============================
+Tables & Lists
+============================ */
+
+QTreeView,
+QTableView,
+QListView {
+    background-color: __BG_SURFACE__;
+    color: __TEXT_PRIMARY__;
+    font-weight: 600;
+    border: none;
+    alternate-background-color: __SURFACE_HOVER__;
+}
+
+/* ============================
+Table / List Items
+============================ */
+
+QTreeView::item,
+QTableView::item,
+QListView::item {
+    padding: 0 10px;
+    color: __TEXT_PRIMARY__;
+}
+
+/* Selection */
+QTreeView::item:selected,
+QTableView::item:selected,
+QListView::item:selected {
+    background-color: __ACCENT__;
+    color: __TEXT_PRIMARY__;
+}
+
+/* ============================
+Viewports
+============================ */
+
+QTreeView::viewport,
+QTableView::viewport,
+QListView::viewport {
+    background-color: __BG_SURFACE__;
+}
+
+/* ============================
+Headers
+============================ */
+
+QHeaderView {
+    background-color: __BG_SURFACE__;
+}
+
+QHeaderView::section {
+    background-color: __BG_SURFACE__;
+    color: __TEXT_PRIMARY__;
+    font-weight: 600;
+    padding: 8px 10px;
+    border-bottom: 1px solid __BORDER__;
+    qproperty-alignment: AlignVCenter;
+}
+
+/* ============================
+Poster Tree Variant
+============================ */
+
+QTreeView[role="posters-tree"] {
+    alternate-background-color: __SURFACE_HOVER__;
+}
+
+/* ============================
+Missing Files Tree
+============================ */
+
+QTreeWidget[role="missing-tree"]::header {
+    background: transparent;
+}
+
+QTreeWidget[role="missing-tree"] QHeaderView::section {
+    background-color: __BG_HEADER__;
+    color: __TEXT_PRIMARY__;
+    min-height: 45px;
+    padding: 0 12px;
+    border-bottom: 1px solid __BORDER__;
+    font-weight: 600;
+}
+
+QTreeWidget[role="missing-tree"] QHeaderView::section:hover {
+    background-color: __SURFACE_HOVER__;
+}
+
+#MissingFilesView QTreeView::item:selected {
+    background-color: __SURFACE_ACTIVE__;
+}
+
+/* ============================
+Log Tables (Print Jobs, Logs)
+============================ */
+
+QTableView[role="log-table"] {
+    background: transparent;
+    gridline-color: __BORDER__;
+}
+
+QTableView[role="log-table"]::item {
+    border-bottom: 1px solid __SURFACE_HOVER__;
+}
+
+QTableView[role="log-table"]::item:selected {
+    background: transparent;
+}
+
+/* Row density override */
+QTableView[row_profile="standard"] {
+    gridline-color: __BORDER__;
+}

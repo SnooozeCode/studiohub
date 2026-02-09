@@ -1,0 +1,20 @@
+/* ============================
+Queue Rows
+============================ */
+
+/* Default indicator */
+QFrame[role="queue-indicator"] {
+    background-color: __SURFACE_HOVER__;
+    border-radius: 2px;
+}
+
+/* Selected row indicator */
+QFrame[role="queue-row"][selected="true"] QFrame[role="queue-indicator"] {
+    background-color: __ACCENT__;
+}
+
+/* Queue badge */
+QLabel[role="queue-badge"] {
+    background-color: __ACCENT__;
+    color: __TEXT_PRIMARY__;
+}

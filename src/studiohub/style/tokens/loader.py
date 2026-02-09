@@ -1,4 +1,4 @@
-# theme/loader.py
+from __future__ import annotations
 
 from pathlib import Path
 import json
@@ -8,13 +8,10 @@ from .validator import validate_theme, ThemeValidationError
 THEME_ROOT = Path(__file__).resolve().parents[1]
 THEMES_DIR = THEME_ROOT / "themes"
 
-
-def load_theme(name: str, *, fallback: str | None = "dracula") -> dict:
+def load_theme(name: str) -> dict:
+    """Load and validate a theme by name. No fallbacks."""
     path = THEMES_DIR / f"{name}.json"
-
     if not path.exists():
-        if fallback and fallback != name:
-            return load_theme(fallback, fallback=None)
         raise ThemeValidationError(f"Theme '{name}' not found at {path}")
 
     try:

@@ -1,38 +1,44 @@
-# theme/schema.py
+# style/tokens/schema.py
 
-REQUIRED_COLOR_KEYS = {
-    "bg_app",
-    "bg_surface",
-    "bg_sidebar",
-    "bg_header",
-    "bg_status",
+# New, semantic theme schema (no fallbacks).
 
-    "fg_primary",
-    "fg_muted",
-    "fg_disabled",
+REQUIRED_SURFACE_KEYS = {
+    "app",
+    "surface",
+    "sidebar",
+    "header",
+    "status",
+}
 
-    "accent_primary",
-    "accent_secondary",
-    "accent_tertiary",
+REQUIRED_TEXT_KEYS = {
+    "primary",
+    "muted",
+    "disabled",
+}
 
-    "border_subtle",
-    "border_strong",
+REQUIRED_BORDER_KEYS = {
+    "subtle",
+    "strong",
+}
 
+REQUIRED_ACCENT_KEYS = {
+    "primary",
+    "secondary",
+    "tertiary",
+}
+
+REQUIRED_SEMANTIC_KEYS = {
     "danger",
     "success",
     "warning",
 }
 
-REQUIRED_INTERACTION_KEYS = {
-    # surfaces
+REQUIRED_STATE_KEYS = {
     "surface_hover",
     "surface_active",
-
-    # accents
     "accent_hover",
     "accent_active",
-
-    # borders
     "border_hover",
     "border_focus",
+    "scrollbar_handle",
 }

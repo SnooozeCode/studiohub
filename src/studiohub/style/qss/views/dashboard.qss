@@ -1,0 +1,432 @@
+/* ============================
+    Dashboard Typography
+    ============================ */
+QLabel#DashboardCardTitle {
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    color: __TEXT_PRIMARY__;
+}
+
+QLabel#KPIValue {
+    color: __TEXT_PRIMARY__;
+}
+
+QLabel#DashboardEmphasisValue {
+    color: __TEXT_PRIMARY__;
+}
+
+QLabel#KPIValueXL {
+    color: __TEXT_PRIMARY__;
+}
+
+QLabel#KPISubtext {
+    color: __TEXT_MUTED__;
+}
+
+QLabel#KPIUnit {
+    color: __TEXT_MUTED__;
+}
+
+QFrame#DashboardCard {
+    background-color: __BG_SURFACE__;
+    border-radius: 7px;
+}
+
+QFrame[role="stat-card"] {
+    background-color: __BG_SURFACE__;
+    border-radius: 7px;
+}
+
+#KPIDivider {
+    background-color: __SURFACE_HOVER__;
+    margin-top: 4px;
+    margin-bottom: 6px;
+}
+
+QWidget#DashboardListHost {
+    background: transparent;
+}
+
+QScrollArea {
+    background: transparent;
+    border: none;
+}
+
+QScrollArea QWidget {
+    background: transparent;
+}
+
+QLabel#KPIMetaMuted {
+    color: __TEXT_MUTED__;
+}
+
+QScrollArea::viewport {
+    background: transparent;
+}
+
+QLabel#DashboardRow {
+    background: transparent;
+}
+
+/* --- Recent Print Logs --- */
+QLabel[role="dashboard-size-badge"] {
+    padding: 2px 10px;
+}
+
+/* Purple accent badge (single) */
+QLabel[role="dashboard-size-badge"][variant="single"] {
+    background: __ACCENT__;
+    color: __TEXT_PRIMARY__;
+}
+
+/* Purple accent badge (2-UP, spans two rows) */
+QLabel[role="dashboard-size-badge"][variant="two-up"] {
+    background: __ACCENT__;
+    color: __TEXT_PRIMARY__;
+}
+
+QListWidget#DashboardQueueList::item {
+    margin: 0px;
+    padding: 0px;
+}
+
+QListWidget#DashboardQueueList {
+    border: none;
+}
+
+QListWidget#DashboardQueueList::item:selected {
+    background: transparent;
+}
+
+/* Compact dashboard card headers (print job / index only) */
+DashboardCard[header="compact"] QLabel#DashboardCardTitle {
+    padding-top: 0px;
+    padding-bottom: 0px;
+}
+
+QChartView {
+    background: transparent;
+}
+
+/* Bar fill colors */
+QBarSet[label="Patent"] {
+    background-color: __ACCENT__;
+}
+
+QBarSet[label="Studio"] {
+    background-color: __ACCENT__;
+}
+
+/* ============================
+Ledger Panels (Shared)
+============================ */
+
+QFrame#MonthlyCostLedgerPanel, QFrame#PatentsVsStudioPanel {
+    background-color: __BG_SURFACE__;
+    border-radius: 7px;
+}
+
+/* --- Subtitle --- */
+
+QLabel#DashboardCardSubtitle {
+    color: __TEXT_MUTED__;
+}
+
+/* --- Rows --- */
+
+QWidget#CostRow {
+    min-height: 24px;
+}
+
+QFrame#CostMarker {
+    border-radius: 2px;
+    background-color: __SURFACE_HOVER__;
+}
+
+QFrame#CostMarker[markerColor="paper"] {
+    background-color: __ACCENT__;
+}
+
+QFrame#CostMarker[markerColor="ink"] {
+    background-color: __ACCENT_SECONDARY__;
+}
+
+QFrame#CostMarker[markerColor="shipping"] {
+    background-color: __ACCENT_TERTIARY__;
+}
+
+QLabel#CostLabel {
+    color: __SURFACE_HOVER__;
+}
+
+QLabel#CostAmount {
+    color: __TEXT_PRIMARY__;
+}
+
+/* --- Divider --- */
+
+QFrame#LedgerDivider {
+    background-color: __TEXT_MUTED__;
+    max-width: 70%;
+}
+
+/* --- Totals --- */
+
+QLabel#LedgerTotalLabel {
+    letter-spacing: 0.8px;
+    color: __TEXT_PRIMARY__;
+}
+
+QLabel#LedgerTotalAmount {
+    color: __TEXT_PRIMARY__;
+}
+
+/* --- Footer --- */
+
+QLabel#LedgerFooter {
+    letter-spacing: 0.4px;
+    color: __TEXT_MUTED__;
+}
+
+/* ============================
+    Patents vs Studio Panel
+    ============================ */
+
+/* Track behind each row */
+QFrame#PVSTrack {
+    background-color: __SURFACE_HOVER__;
+    border-radius: 4px;
+}
+
+/* Fill bar (color depends on row barRole) */
+QWidget#PVSRow[barRole="archive"] QFrame#PVSFill {
+    background-color: __SURFACE_HOVER__;
+    border-radius: 4px;
+}
+
+QWidget#PVSRow[barRole="studio"] QFrame#PVSFill {
+    background-color: __SURFACE_HOVER__;
+    border-radius: 4px;
+}
+
+QLabel#LedgerDelta[delta="up"] {
+    color: __ACCENT_TERTIARY__;
+}
+
+QLabel#LedgerDelta[delta="down"] {
+    color: __DANGER__;
+}
+
+QLabel#LedgerDelta[delta="neutral"] {
+    color: __TEXT_MUTED__;
+}
+/* ============================
+Patents vs Studio Bars
+============================ */
+
+QFrame#PVSBar {
+    border-radius: 4px;
+}
+
+/* Archive bar */
+QWidget[barRole="archive"] QFrame#PVSBar {
+    background-color: __ACCENT__;
+}
+
+/* Studio bar */
+QWidget[barRole="studio"] QFrame#PVSBar {
+    background-color: __ACCENT_SECONDARY__;
+}
+
+/* =========================================
+Ledger-style left indicators
+========================================= */
+
+QFrame#LedgerIndicator {
+    background-color: __SCROLLBAR_HANDLE__;
+    border-radius: 2px;
+}
+
+QFrame#LedgerIndicator[role="print-job"] {
+    background-color: __ACCENT__;
+}
+
+/* ============================
+Ledger Bars
+============================ */
+
+QFrame#LedgerBarTrack {
+    background-color: __BG_SURFACE__;
+    border-radius: 4px;
+}
+
+QFrame#LedgerBarFill {
+    background-color: __ACCENT__;
+    border-radius: 4px;
+}
+
+QFrame#LedgerBarTrack {
+    min-height: 14px;
+    max-height: 14px;
+}
+
+QFrame#LedgerBarFill {
+    min-height: 14px;
+    max-height: 14px;
+}
+
+
+/* ============================
+Archive Status Panel
+============================ */
+
+QFrame#ArchiveStatusPanel {
+    background-color: __BG_SURFACE__;
+    border-radius: 7px;
+}
+
+QWidget[barRole="archive"] QFrame#PVSBar {
+    background-color: __ACCENT__;
+}
+
+/* ============================
+Notes Panel
+============================ */
+
+QPlainTextEdit#DashboardNotes {
+    background-color: __BG_SURFACE__;
+    color: __TEXT_PRIMARY__;
+    border-radius: 8px;
+    padding: 10px;
+    font-weight: 400;
+
+}
+/* --- Dashboard Notes (Dracula) --- */
+
+QTextEdit#DashboardNotes {
+    background-color: __BG_SURFACE__;
+    border: none;
+    color: __TEXT_PRIMARY__;
+}
+
+
+/* ============================
+Replace Paper Dialog
+============================ */
+
+QDialog#ReplacePaperDialog {
+background-color: __BG_SURFACE__;
+}
+
+/* Labels */
+QDialog#ReplacePaperDialog QLabel {
+    color: __TEXT_PRIMARY__;
+}
+
+/* Inputs */
+QDialog#ReplacePaperDialog QLineEdit, QDialog#ReplacePaperDialog QDoubleSpinBox {
+    background-color: __BG_SURFACE__;
+    color: __TEXT_PRIMARY__;
+    border: 1px solid __BORDER__;
+    border-radius: 6px;
+    padding: 6px 8px;
+}
+
+/* Buttons */
+QDialog#ReplacePaperDialog QPushButton {
+    padding: 6px 14px;
+}
+
+QDialog#ReplacePaperDialog QLineEdit, QDialog#ReplacePaperDialog QDoubleSpinBox {
+    min-height: 22px;
+    max-height: 22px;
+    padding: 3px 5px;
+}
+
+#StudioMoodDivider {
+    background-color: __SURFACE_HOVER__;
+    height: 1px;
+    margin: 4px 0 8px 0;
+}
+
+QToolButton#MediaPrev, QToolButton#MediaPlayPause, QToolButton#MediaNext {
+    background: transparent;
+    border: none;
+    padding: 4px;
+}
+
+QToolButton#MediaPrev:hover, QToolButton#MediaPlayPause:hover, QToolButton#MediaNext:hover {
+    background-color: __SURFACE_HOVER__;
+    border-radius: 6px;
+}
+
+/* Primary KPI / main value */
+QLabel#PanelPrimary {
+    font-size: 28px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+/* Secondary supporting values */
+QLabel#PanelSecondary {
+    font-size: 13px;
+    color: #a6accd;
+}
+
+/* Meta info (timestamps, labels) */
+QLabel#PanelMeta {
+    font-size: 11px;
+    color: #7f85a3;
+}
+
+/* Empty / placeholder state */
+QLabel#PanelPlaceholder {
+    font-size: 13px;
+    color: #6c728c;
+    font-style: italic;
+}
+
+QWidget#ActionPanel {
+    background-color: #1f2430;
+    border-radius: 14px;
+}
+
+QWidget#ActionPanel:hover {
+    background-color: #1f2430;
+}
+
+/* Title */
+QLabel#ActionTitle {
+    font-size: 17px;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+/* Subtitle */
+QLabel#ActionSubtitle {
+    font-size: 13px;
+    color: #a6accd;
+    margin-top: 4px;
+}
+
+QWidget#ActionPanelInner {
+    background-color: #1f2430;
+    border-radius: 14px;
+    border: 1px solid #2f3550;
+}
+
+QWidget#ActionPanel:hover QWidget#ActionPanelInner {
+    border: 1px solid #3b5cff;
+}
+
+/* Action panel surface — MUST match dashboard cards */
+QWidget#ActionPanelSurface {
+    background-color: #1f2430;   /* same as DashboardCard */
+    border-radius: 10px;
+    border: 1px solid #2a2f3a;   /* subtle edge */
+}
+
+/* Hover affordance */
+QWidget#ActionPanel:hover QWidget#ActionPanelSurface {
+    background-color: #232838;
+}

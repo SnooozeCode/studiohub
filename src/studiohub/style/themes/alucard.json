@@ -1,42 +1,42 @@
-{ "meta": {"name": "Feather", "author": "SnooozeCo", "version": "1.0" },
-  "colors": {
-    "bg_app": "#FAFAF7",
-    "bg_surface": "#FFFFFF",
-    "bg_sidebar": "#F3F3EE",
-    "bg_header": "#F3F3EE",
-    "bg_status": "#F3F3EE",
-
-    "fg_primary": "#2A2A2A",
-    "fg_muted": "#6B6F76",
-    "fg_disabled": "#B7BCC5",
-
-    "accent_primary": "#5A7FFF",
-    "accent_secondary": "#D14D72",
-    "accent_tertiary": "#3FA7A3",
-
-    "border_subtle": "#E1E4EA",
-    "border_strong": "#C6CBD6",
-
+{
+  "meta": {
+    "name": "Feather",
+    "author": "SnooozeCo",
+    "version": "1.0"
+  },
+  "surface": {
+    "app": "#FAFAF7",
+    "surface": "#FFFFFF",
+    "sidebar": "#F3F3EE",
+    "header": "#F3F3EE",
+    "status": "#F3F3EE"
+  },
+  "text": {
+    "primary": "#2A2A2A",
+    "muted": "#6B6F76",
+    "disabled": "#B7BCC5"
+  },
+  "border": {
+    "subtle": "#E1E4EA",
+    "strong": "#C6CBD6"
+  },
+  "accent": {
+    "primary": "#5A7FFF",
+    "secondary": "#D14D72",
+    "tertiary": "#3FA7A3"
+  },
+  "semantic": {
     "danger": "#D64545",
     "success": "#3BA272",
-    "warning": "#C89B3C",
-
-    "bg_row_even": "#FFFFFF",
-    "bg_row_odd": "#F3F3EE",
-
-    "icon_primary": "#2A2A2A",
-    "icon_muted": "#6B6F76"
+    "warning": "#C89B3C"
   },
-  "interaction": {
-    "surface_hover": "rgba(0, 0, 0, 0.035)",
-    "surface_active": "rgba(0, 0, 0, 0.07)",
-
+  "state": {
+    "surface_hover": "#00000009",
+    "surface_active": "#00000012",
     "accent_hover": "#6B8CFF",
     "accent_active": "#4A6EE6",
-
     "border_hover": "#B6BCC8",
     "border_focus": "#5A7FFF",
-
-    "scrollbar_handle": "rgba(0, 0, 0, 0.18)"
+    "scrollbar_handle": "#0000002E"
   }
 }

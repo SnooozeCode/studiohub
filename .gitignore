@@ -1,17 +1,100 @@
-# ---- Python ----
+# ============================
+# Python
+# ============================
+
 __pycache__/
 *.py[cod]
 *$py.class
 
-# ---- Virtual environments ----
+# Virtual environments
 .venv/
 venv/
+env/
 
-# ---- Tooling caches ----
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
+# Python build artifacts
+build/
+dist/
+*.egg-info/
+.eggs/
 
-# ---- OS junk ----
+# PyInstaller
+*.spec
+
+# ============================
+# Qt / PySide
+# ============================
+
+# Qt Creator
+*.user
+*.pro.user
+*.qmlproject.user
+
+# Qt cache / generated
+.qmake.stash
+moc_*.cpp
+ui_*.py
+qrc_*.py
+
+# ============================
+# OS / Editor
+# ============================
+
+# macOS
 .DS_Store
+
+# Windows
 Thumbs.db
+desktop.ini
+
+# VS Code
+.vscode/
+
+# JetBrains
+.idea/
+
+# ============================
+# Logs & Runtime State
+# ============================
+
+*.log
+logs/
+crash_reports/
+
+# ============================
+# App Runtime / Local State
+# ============================
+
+# Local config, caches, databases
+*.sqlite
+*.db
+.cache/
+state/
+tmp/
+
+# User-generated exports
+exports/
+output/
+
+# ============================
+# Styling / Build Artifacts
+# ============================
+
+# Compiled QSS output (generated)
+compiled.qss
+
+# Token debug outputs
+tokens_dump.json
+
+# ============================
+# Testing / Coverage
+# ============================
+
+.pytest_cache/
+.coverage
+htmlcov/
+
+# ============================
+# Packaging / Releases
+# ============================
+
+releases/

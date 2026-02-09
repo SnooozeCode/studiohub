@@ -1,0 +1,165 @@
+/* ============================
+Sidebar
+============================ */
+
+#leftMenuBg {
+    background-color: __BG_SURFACE__;
+}
+
+QFrame#SidebarHeader {
+    background-color: __BG_HEADER__;
+    border-bottom: 2px solid __BORDER__;
+}
+
+/* ============================
+Sidebar Buttons
+============================ */
+
+QWidget#SidebarButton {
+    background: transparent;
+}
+
+QWidget#SidebarButton:hover {
+    background-color: __SURFACE_HOVER__;
+}
+
+QWidget#SidebarButton:pressed {
+    background-color: __SURFACE_ACTIVE__;
+}
+
+QPushButton#SidebarButtonText {
+    background: transparent;
+    border: none;
+    padding: 0;
+}
+
+QPushButton#SidebarButtonText:hover,
+QPushButton#SidebarButtonText:pressed,
+QPushButton#SidebarButtonText:checked {
+    background: transparent;
+}
+
+/* ============================
+Sidebar Rows
+============================ */
+
+QWidget#SidebarChildRow:hover {
+    background-color: __SURFACE_HOVER__;
+}
+
+QWidget#SidebarChildRow[active="true"] {
+    background: transparent;
+}
+
+/* Active indicator */
+QFrame#SidebarIndicator {
+    background: transparent;
+}
+
+QWidget#SidebarChildRow[active="true"] QFrame#SidebarIndicator,
+QWidget#SidebarButton[active="true"] QFrame#SidebarIndicator {
+    background-color: __ACCENT__;
+}
+
+/* ============================
+Sidebar Labels
+============================ */
+
+QLabel#SidebarButtonLabel {
+    color: __TEXT_MUTED__;
+    font-weight: 600;
+}
+
+QWidget#SidebarButton[active="true"] QLabel#SidebarButtonLabel {
+    color: __TEXT_PRIMARY__;
+    font-weight: 700;
+}
+
+/* ============================
+Sidebar Footer
+============================ */
+
+QFrame#SidebarFooter {
+    background-color: __BG_SURFACE__;
+    border-top: 1px solid __BORDER__;
+}
+
+QFrame#SidebarFooterDivider,
+QFrame#SidebarDivider {
+    background-color: __BORDER__;
+    height: 1px;
+}
+
+/* ============================
+Footer Utility Buttons
+============================ */
+
+QPushButton#SidebarUtility {
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    padding: 0;
+}
+
+QPushButton#SidebarUtility:hover {
+    background-color: __SURFACE_HOVER__;
+}
+
+QPushButton#SidebarUtility:pressed,
+QPushButton#SidebarUtility:checked {
+    background-color: __SURFACE_ACTIVE__;
+}
+
+/* ============================
+Notifications Drawer
+============================ */
+
+QFrame#NotificationsDrawer {
+    background: __BG_SURFACE__;
+}
+
+QFrame#NotificationsHeader {
+    background: __BG_HEADER__;
+    border-bottom: 1px solid __BORDER__;
+}
+
+QWidget#NotificationRow {
+    background: __BG_SURFACE__;
+}
+
+QFrame#NotificationDivider {
+    background: __BORDER__;
+    margin: 0 16px;
+}
+
+QLabel[role="notification-title"] {
+    font-weight: 600;
+}
+
+/* ============================
+Notification Badge
+============================ */
+
+QLabel#SidebarNotificationBadge {
+    background: __ACCENT__;
+    color: __TEXT_PRIMARY__;
+
+    min-height: 14px;
+    padding: 0 4px;
+
+    border-radius: 7px;
+    font-size: 7px;
+    font-weight: 600;
+
+    qproperty-alignment: AlignCenter;
+}
+
+QLabel#SidebarNotificationBadge[variant="compact"] {
+    padding: 0 3px;
+}
+
+QLabel#SidebarNotificationBadge[variant="inline"] {
+    min-height: 16px;
+    padding: 0 5px;
+    font-size: 8px;
+}

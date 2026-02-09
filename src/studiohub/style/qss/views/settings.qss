@@ -1,0 +1,178 @@
+/* ============================================================
+   Root background ownership
+   ============================================================ */
+
+#SettingsView {
+    background-color: __BG_APP__;
+}
+
+#SettingsView QScrollArea {
+    background: transparent;
+    border: none;
+}
+
+#SettingsView QScrollArea::viewport {
+    background: transparent;
+}
+
+#SettingsView QWidget#SettingsContent {
+    background-color: __BG_APP__;
+}
+
+
+/* ============================================================
+   Button Base (canonical interaction model)
+   ============================================================ */
+
+#SettingsView QPushButton {
+    background-color: __SURFACE_HOVER__;
+    color: __TEXT_MUTED__;
+    border: none;
+}
+
+#SettingsView QPushButton:hover {
+    background-color: __SURFACE_HOVER__;
+    color: __TEXT_PRIMARY__;
+}
+
+
+/* ============================================================
+   Top Navigation
+   ============================================================ */
+
+#SettingsView QPushButton[role="NavToggle"] {
+    min-width: 110px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    background-color: __SURFACE_HOVER__;
+    color: __TEXT_MUTED__;
+}
+
+#SettingsView QPushButton[role="NavToggle"]:checked {
+    background-color: __ACCENT__;
+    color: __TEXT_PRIMARY__;
+    font-weight: 600;
+}
+
+
+/* ============================================================
+   Section Structure
+   ============================================================ */
+
+#SettingsView QFrame[role="section-separator"],
+#SettingsView QFrame[role="section-divider"] {
+    background-color: __BORDER__;
+    min-height: 1px;
+    max-height: 1px;
+    border: none;
+}
+
+#SettingsView QLabel[role="section-title"],
+#SettingsView QLabel[role="subsection-title"] {
+    color: __TEXT_PRIMARY__;
+}
+
+
+/* ============================================================
+   Settings Rows
+   ============================================================ */
+
+#SettingsView QWidget[role="settings-row"] {
+    border-bottom: 1px solid __BORDER__;
+}
+
+#SettingsView QWidget[role="settings-row"][isLast="true"] {
+    border-bottom: none;
+}
+
+
+/* ============================================================
+   Field Labels & Inputs
+   ============================================================ */
+
+#SettingsView QLabel[role="field-label"] {
+    color: __TEXT_PRIMARY__;
+}
+
+#SettingsView QLabel[role="muted"] {
+    color: __TEXT_MUTED__;
+}
+
+#SettingsView QLineEdit {
+    background-color: __BG_SURFACE__;
+    color: __TEXT_PRIMARY__;
+    border: 1px solid __BORDER__;
+    border-radius: 3px;
+    padding: 6px 10px;
+}
+
+
+/* ============================================================
+   Segmented Buttons (canonical)
+   ============================================================ */
+
+#SettingsView QPushButton#SegmentedButton {
+    min-width: 65px;
+    min-height: 32px;
+    padding: 6px 18px;
+    background-color: __SURFACE_HOVER__;
+    color: __TEXT_MUTED__;
+    border: none;
+}
+
+#SettingsView QPushButton#SegmentedButton:hover {
+    background-color: __SURFACE_HOVER__;
+    color: __TEXT_PRIMARY__;
+    font-weight: 600;
+}
+
+#SettingsView QPushButton#SegmentedButton:checked {
+    background-color: __ACCENT__;
+    color: __TEXT_PRIMARY__;
+    font-weight: 600;
+}
+
+#SettingsView QPushButton#SegmentedButton[segment="first"] {
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+}
+
+#SettingsView QPushButton#SegmentedButton[segment="last"] {
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+
+/* ============================================================
+   Icon Buttons (SVG / currentColor)
+   ============================================================ */
+
+#SettingsView QToolButton#IconButton {
+    background-color: transparent;
+    border: none;
+    color: __TEXT_MUTED__;
+}
+
+#SettingsView QToolButton#IconButton:hover {
+    color: __TEXT_PRIMARY__;
+}
+
+
+/* ============================================================
+   Footer Buttons
+   ============================================================ */
+
+#SettingsView QPushButton:default {
+    background-color: __SURFACE_HOVER__;
+    color: __TEXT_MUTED__;
+    font-weight: 600;
+}
+
+#SettingsView QPushButton#IconButton {
+    background-color: __SURFACE_HOVER__;
+    border-radius: 6px;
+}
+
+#SettingsView QPushButton#IconButton:hover {
+    color: __TEXT_PRIMARY__;
+}

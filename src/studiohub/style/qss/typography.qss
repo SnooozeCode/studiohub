@@ -1,0 +1,79 @@
+/* ============================================================
+Base Typography (Semantic, Static)
+============================================================ */
+
+/* ------------------------------------------------------------
+Global text safety
+------------------------------------------------------------ */
+
+QLabel,
+QPushButton,
+QToolButton {
+    color: __TEXT_PRIMARY__;
+}
+
+/* ------------------------------------------------------------
+Headings
+------------------------------------------------------------ */
+
+QLabel[typography="h1"],
+QLabel[typography="h2"],
+QLabel[typography="h3"],
+QLabel[typography="h4"],
+QLabel[typography="h5"],
+QLabel[typography="h6"] {
+    color: __TEXT_PRIMARY__;
+    font-weight: 600;
+}
+
+/* ------------------------------------------------------------
+Section headers / small caps
+------------------------------------------------------------ */
+
+QLabel[typography="h6"] {
+    letter-spacing: 1px;
+    color: __TEXT_MUTED__;
+}
+
+/* ------------------------------------------------------------
+Navigation labels
+------------------------------------------------------------ */
+
+QLabel[typography="nav"] {
+    letter-spacing: 1px;
+    font-weight: 600;
+    color: __TEXT_PRIMARY__;
+}
+
+/* ------------------------------------------------------------
+Body text
+------------------------------------------------------------ */
+
+QLabel[typography="body"] {
+    color: __TEXT_PRIMARY__;
+    font-weight: 400;
+}
+
+QLabel[typography="body-strong"] {
+    color: __TEXT_PRIMARY__;
+    font-weight: 600;
+}
+
+/* ------------------------------------------------------------
+Secondary / muted text
+------------------------------------------------------------ */
+
+QLabel[typography="caption"],
+QLabel[typography="small"] {
+    color: __TEXT_MUTED__;
+    font-weight: 400;
+}
+
+/* ------------------------------------------------------------
+Monospace
+------------------------------------------------------------ */
+
+QLabel[typography="mono"] {
+    font-family: monospace;
+    color: __TEXT_PRIMARY__;
+}

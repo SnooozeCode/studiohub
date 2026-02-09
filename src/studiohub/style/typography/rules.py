@@ -71,7 +71,6 @@ def build_qss(tokens) -> str:
     ------------------------------------------------------------ */
 
     QLabel[typography="h6"] {{
-        text-transform: uppercase;
         letter-spacing: 1px;
         color: {tokens.text_muted};
     }}

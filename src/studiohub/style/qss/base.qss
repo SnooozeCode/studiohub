@@ -1,0 +1,261 @@
+/* ============================
+Root / App Surfaces
+============================ */
+
+#Root {
+    background-color: __BG_APP__;
+}
+
+#bgApp {
+    background-color: __BG_APP__;
+    border: none;
+}
+
+QWidget {
+    color: __TEXT_PRIMARY__;
+}
+
+
+/* ============================
+Status Bar
+============================ */
+
+QFrame#ViewStatusBar {
+    background-color: __BG_APP__;
+    border-top: 1px solid __BORDER__;
+}
+
+QLabel#StatusText,
+QLabel#StatusVersion {
+    color: __TEXT_MUTED__;
+}
+
+
+/* ============================
+Scrollbars (Token-Based)
+============================ */
+
+QScrollBar:vertical {
+    background: __BG_SURFACE__;
+    width: 10px;
+    margin: 0;
+}
+
+QScrollBar::handle:vertical {
+    background: __SCROLLBAR_HANDLE__;
+    min-height: 24px;
+    border-radius: 5px;
+}
+
+QScrollBar::handle:vertical:hover {
+    background: __BORDER_HOVER__;
+}
+
+QScrollBar::handle:vertical:pressed {
+    background: __ACCENT_ACTIVE__;
+}
+
+QScrollBar::add-line:vertical,
+QScrollBar::sub-line:vertical {
+    height: 0;
+}
+
+QScrollBar::add-page:vertical,
+QScrollBar::sub-page:vertical {
+    background: none;
+}
+
+QScrollBar:horizontal {
+    background: __BG_SURFACE__;
+    height: 10px;
+    margin: 0;
+}
+
+QScrollBar::handle:horizontal {
+    background: __BORDER__;
+    min-width: 24px;
+    border-radius: 5px;
+}
+
+QScrollBar::handle:horizontal:hover {
+    background: __BORDER_HOVER__;
+}
+
+QScrollBar::handle:horizontal:pressed {
+    background: __ACCENT_ACTIVE__;
+}
+
+QScrollBar::add-line:horizontal,
+QScrollBar::sub-line:horizontal {
+    width: 0;
+}
+
+QScrollBar::add-page:horizontal,
+QScrollBar::sub-page:horizontal {
+    background: none;
+}
+
+
+/* ============================
+Progress Bars (Global)
+============================ */
+
+QProgressBar {
+    background-color: __BG_SURFACE__;
+    border: 1px solid __BORDER__;
+    border-radius: 4px;
+    height: 10px;
+    text-align: center;
+    color: transparent;
+}
+
+QProgressBar::chunk {
+    background-color: __ACCENT__;
+    border-radius: 3px;
+}
+
+QProgressBar[variant="warning"]::chunk {
+    background-color: __WARNING__;
+}
+
+QProgressBar[variant="danger"]::chunk {
+    background-color: __DANGER__;
+}
+
+QProgressBar[variant="success"]::chunk {
+    background-color: __SUCCESS__;
+}
+
+
+/* ============================
+Context Menus (QMenu)
+============================ */
+
+QMenu {
+    background-color: __BG_SURFACE__;
+    border: 1px solid __BORDER__;
+    padding: 0;
+}
+
+QMenu::item {
+    color: __TEXT_PRIMARY__;
+    padding: 6px 24px 6px 18px;
+}
+
+QMenu::item:selected {
+    background-color: __ACCENT_HOVER__;
+    color: __TEXT_PRIMARY__;
+}
+
+QMenu::separator {
+    height: 1px;
+    margin: 6px 8px;
+    background-color: __BORDER__;
+}
+
+
+/* ============================
+Hub Dialog
+============================ */
+
+QDialog#HubDialog {
+    background-color: __BG_SURFACE__;
+    border-radius: 14px;
+}
+
+QDialog#HubDialog QLabel {
+    color: __TEXT_PRIMARY__;
+}
+
+QDialog#HubDialog QCheckBox {
+    color: __TEXT_PRIMARY__;
+    spacing: 8px;
+    padding-top: 6px;
+}
+
+QDialog#HubDialog QCheckBox::indicator {
+    width: 16px;
+    height: 16px;
+    border-radius: 4px;
+    border: 1px solid __BORDER__;
+    background-color: __BG_SURFACE__;
+}
+
+QDialog#HubDialog QCheckBox::indicator:checked {
+    background-color: __ACCENT__;
+    border-color: __ACCENT__;
+}
+
+QDialog#HubDialog QDialogButtonBox {
+    margin-top: 10px;
+}
+
+QDialog#HubDialog QPushButton {
+    min-height: 32px;
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-weight: 500;
+}
+
+/* Primary / default action */
+QDialog#HubDialog QPushButton:default {
+    background-color: __ACCENT__;
+    color: __TEXT_PRIMARY__;
+}
+
+QDialog#HubDialog QPushButton:default:hover {
+    background-color: __ACCENT_HOVER__;
+}
+
+
+/* ============================
+Message Boxes
+============================ */
+
+QMessageBox {
+    background-color: __BG_SURFACE__;
+    color: __TEXT_PRIMARY__;
+}
+
+QMessageBox QLabel {
+    color: __TEXT_PRIMARY__;
+}
+
+QMessageBox QLabel#qt_msgbox_label {
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+QMessageBox QLabel#qt_msgboxex_icon_label {
+    padding-right: 12px;
+}
+
+QMessageBox QPushButton {
+    min-width: 80px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    background-color: __BG_SURFACE__;
+    color: __TEXT_PRIMARY__;
+    border: 1px solid __BORDER__;
+}
+
+QMessageBox QPushButton:hover {
+    background-color: __BG_HEADER__;
+}
+
+QMessageBox QPushButton:pressed {
+    background-color: __BG_SURFACE__;
+}
+
+QMessageBox QPushButton:default {
+    border: 1px solid __ACCENT__;
+}
+
+
+/* ============================
+Emphasis
+============================ */
+
+QLabel[emphasis="strong"] {
+    font-weight: 600;
+}

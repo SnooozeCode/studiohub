@@ -1,0 +1,91 @@
+/* ============================
+Dialogs (Global)
+============================ */
+
+QDialog {
+    background-color: __BG_SURFACE__;
+    color: __TEXT_PRIMARY__;
+    border-radius: 12px;
+}
+
+QDialog > QWidget {
+    background: transparent;
+}
+
+/* ============================
+Typography
+============================ */
+
+QDialog QLabel[emphasis="strong"] {
+    font-weight: 600;
+    color: __TEXT_PRIMARY__;
+}
+
+/* ============================
+Inputs
+============================ */
+
+QDialog QLineEdit,
+QDialog QTextEdit,
+QDialog QComboBox {
+    background-color: __BG_APP__;
+    border: 1px solid __BORDER__;
+    border-radius: 6px;
+    padding: 6px 8px;
+    color: __TEXT_PRIMARY__;
+}
+
+QDialog QLineEdit:focus,
+QDialog QTextEdit:focus,
+QDialog QComboBox:focus {
+    border-color: __ACCENT__;
+}
+
+/* ============================
+Radio / Checkbox
+============================ */
+
+QDialog QRadioButton,
+QDialog QCheckBox {
+    spacing: 8px;
+    color: __TEXT_PRIMARY__;
+}
+
+QDialog QRadioButton::indicator,
+QDialog QCheckBox::indicator {
+    width: 14px;
+    height: 14px;
+}
+
+/* ============================
+Dialog Buttons
+============================ */
+
+QDialog QDialogButtonBox QPushButton {
+    min-height: 32px;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-weight: 500;
+}
+
+/* Primary / default action */
+QDialog QDialogButtonBox QPushButton:default {
+    background-color: __ACCENT__;
+    color: __TEXT_PRIMARY__;
+}
+
+/* Secondary actions */
+QDialog QDialogButtonBox QPushButton:!default {
+    background-color: transparent;
+    border: 1px solid __BORDER__;
+    color: __TEXT_PRIMARY__;
+}
+
+/* Hover states */
+QDialog QDialogButtonBox QPushButton:!default:hover {
+    background-color: __SURFACE_HOVER__;
+}
+
+QDialog QDialogButtonBox QPushButton:default:hover {
+    background-color: __ACCENT_HOVER__;
+}

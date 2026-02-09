@@ -1,43 +1,42 @@
 {
-  "meta": { "name": "Dracula", "author": "SnooozeCo", "version": "1.1" },
-  "colors": {
-    "bg_app": "#282A36",
-    "bg_surface": "#21222C",
-    "bg_sidebar": "#21222C",
-    "bg_header": "#191A21",
-    "bg_status": "#21222C",
-
-    "fg_primary": "#F8F8F2",
-    "fg_muted": "#6272A4",
-    "fg_disabled": "#44475A",
-
-    "accent_primary": "#BD93F9",
-    "accent_secondary": "#FF79C6",
-    "accent_tertiary": "#8BE9FD",
-
-    "border_subtle": "#44475A",
-    "border_strong": "#6272A4",
-
+  "meta": {
+    "name": "Dracula",
+    "author": "SnooozeCo",
+    "version": "1.1"
+  },
+  "surface": {
+    "app": "#282A36",
+    "surface": "#21222C",
+    "sidebar": "#21222C",
+    "header": "#191A21",
+    "status": "#21222C"
+  },
+  "text": {
+    "primary": "#F8F8F2",
+    "muted": "#6272A4",
+    "disabled": "#44475A"
+  },
+  "border": {
+    "subtle": "#44475A",
+    "strong": "#6272A4"
+  },
+  "accent": {
+    "primary": "#BD93F9",
+    "secondary": "#FF79C6",
+    "tertiary": "#8BE9FD"
+  },
+  "semantic": {
     "danger": "#FF5555",
     "success": "#50FA7B",
-    "warning": "#F1FA8C",
-
-    "bg_row_even": "#282A36",
-    "bg_row_odd": "#44475A",
-
-    "icon_primary": "#F8F8F2",
-    "icon_muted": "#6272A4"
+    "warning": "#F1FA8C"
   },
-  "interaction": {
-    "surface_hover": "rgba(0,0,0,0.06)",
-    "surface_active": "rgba(0,0,0,0.10)",
-
+  "state": {
+    "surface_hover": "#0000000F",
+    "surface_active": "#0000001A",
     "accent_hover": "#C7A4FB",
     "accent_active": "#B185F7",
-
     "border_hover": "#6272A4",
     "border_focus": "#8BE9FD",
-
-    "scrollbar_handle": "rgba(255,255,255,0.18)"
+    "scrollbar_handle": "#FFFFFF2E"
   }
 }

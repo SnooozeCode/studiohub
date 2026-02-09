@@ -71,73 +71,70 @@ class ThemeTokens:
 
 def build_tokens(theme: dict) -> ThemeTokens:
     """
-    Build ThemeTokens from a validated theme dictionary.
+    Build ThemeTokens from a validated theme dictionary (new schema).
 
-    This function assumes the theme was loaded via the theme loader
-    and has already been parsed from JSON.
+    Expected theme format:
+      - surface: app, surface, sidebar, header, status
+      - text: primary, muted, disabled
+      - border: subtle, strong
+      - accent: primary, secondary, tertiary
+      - semantic: danger, success, warning
+      - state: surface_hover, surface_active, accent_hover, accent_active,
+               border_hover, border_focus, scrollbar_handle
     """
+    for section in ("surface","text","border","accent","semantic","state"):
+        if section not in theme:
+            raise ValueError("Theme must be loaded via tokens.loader.load_theme() and match the new schema")
 
-    if "colors" not in theme or "interaction" not in theme:
-        raise ValueError("Theme must be loaded via theme.loader.load_theme()")
+    s = theme["surface"]
+    t = theme["text"]
+    b = theme["border"]
+    a = theme["accent"]
+    sem = theme["semantic"]
+    st = theme["state"]
 
-    c = theme["colors"]
-    i = theme["interaction"]
+    name = (theme.get("meta", {}).get("name") or theme.get("name") or "unknown").lower()
 
     return ThemeTokens(
-        name=theme.get("meta", {}).get("name", "unknown").lower(),
+        name=name,
 
-        # -------------------------------
         # Surfaces
-        # -------------------------------
-        bg_app=c["bg_app"],
-        bg_surface=c["bg_surface"],
-        bg_sidebar=c["bg_sidebar"],
-        bg_header=c["bg_header"],
-        bg_status=c["bg_status"],
+        bg_app=s["app"],
+        bg_surface=s["surface"],
+        bg_sidebar=s["sidebar"],
+        bg_header=s["header"],
+        bg_status=s["status"],
 
-        # -------------------------------
         # Text
-        # -------------------------------
-        text_primary=c["fg_primary"],
-        text_muted=c["fg_muted"],
-        text_disabled=c["fg_disabled"],
+        text_primary=t["primary"],
+        text_muted=t["muted"],
+        text_disabled=t["disabled"],
 
-        # -------------------------------
         # Borders
-        # -------------------------------
-        border=c["border_subtle"],
-        border_strong=c["border_strong"],
+        border=b["subtle"],
+        border_strong=b["strong"],
 
-        # -------------------------------
-        # Danger
-        # -------------------------------
-        danger=c["danger"],
-        success=c["success"],
-        warning=c["warning"],
+        # Semantic
+        danger=sem["danger"],
+        success=sem["success"],
+        warning=sem["warning"],
 
-        # -------------------------------
         # Accents
-        # -------------------------------
-        accent=c["accent_primary"],
-        accent_secondary=c["accent_secondary"],
-        accent_tertiary=c["accent_tertiary"],
+        accent=a["primary"],
+        accent_secondary=a["secondary"],
+        accent_tertiary=a["tertiary"],
 
-        # -------------------------------
         # Interaction / State
-        # -------------------------------
-        surface_hover=i["surface_hover"],
-        surface_active=i["surface_active"],
+        surface_hover=st["surface_hover"],
+        surface_active=st["surface_active"],
+        accent_hover=st["accent_hover"],
+        accent_active=st["accent_active"],
+        border_hover=st["border_hover"],
+        border_focus=st["border_focus"],
+        scrollbar_handle=st["scrollbar_handle"],
 
-        accent_hover=i["accent_hover"],
-        accent_active=i["accent_active"],
-
-        border_hover=i["border_hover"],
-        border_focus=i["border_focus"],
-
-        scrollbar_handle=i["scrollbar_handle"],
-
-        # 🔹 Derived here
-        default_hover=with_alpha(c["bg_app"], 0.25),
-        danger_hover=with_alpha(c["danger"], 0.20),
-        danger_active=with_alpha(c["danger"], 0.30),
+        # Derived
+        default_hover=with_alpha(s["app"], 0.25),
+        danger_hover=with_alpha(sem["danger"], 0.20),
+        danger_active=with_alpha(sem["danger"], 0.30),
     )
