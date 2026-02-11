@@ -63,6 +63,7 @@ class ViewInitializer:
 
         view_dashboard = DashboardView(
             dashboard_service=self._deps.dashboard_service,
+            notes_store=self._deps.notes_store,
             parent=self._parent,
         )
 

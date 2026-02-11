@@ -14,6 +14,12 @@ QLabel#DashboardCardTitle {
     color: __TEXT_PRIMARY__;
 }
 
+QTextEdit#DashboardNotes {
+    background-color: __BG_SURFACE__;
+    border: none;
+    color: __TEXT_PRIMARY__;
+}
+
 
 /* Primary KPI / main value */
 QLabel#PanelPrimary {

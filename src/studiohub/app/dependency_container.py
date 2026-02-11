@@ -41,7 +41,7 @@ from studiohub.hub_models.missing_files_model_qt import MissingFilesModelQt
 from studiohub.hub_models.print_manager_model_qt import PrintManagerModelQt
 from studiohub.hub_models.mockup_generator_model_qt import MockupGeneratorModelQt
 from studiohub.hub_models.index_log_model_qt import IndexLogModelQt
-
+from studiohub.services.dashboard.notes_store import DashboardNotesStore
 
 # ==================================================
 # Dependency container
@@ -72,6 +72,7 @@ class Dependencies:
     print_log_state: PrintLogState
     dashboard_service: DashboardService
     notification_service: NotificationService
+    notes_store: DashboardNotesStore
 
     # -----------------------------
     # Qt models
@@ -141,6 +142,10 @@ class DependencyContainer:
         except Exception:
             pass
 
+        notes_store = DashboardNotesStore(
+            config_manager=config_manager
+        )
+        
         dashboard_service = DashboardService(
             config_manager=config_manager,
             paper_ledger=paper_ledger,
@@ -191,6 +196,7 @@ class DependencyContainer:
             poster_index_state=poster_index_state,
             print_log_state=print_log_state,
             dashboard_service=dashboard_service,
+            notes_store=notes_store,
             notification_service=notification_service,
             missing_model=missing_model,
             print_manager_model=print_manager_model,

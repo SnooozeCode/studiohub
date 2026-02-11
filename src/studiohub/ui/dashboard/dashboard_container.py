@@ -22,18 +22,25 @@ class DashboardSurface(QFrame):
     def add_content(self, widget: QWidget):
         self._layout.addWidget(widget)
 
-
-class DashboardContainer(DashboardSurface):
+class DashboardContainer(QFrame):
     """
-    Dashboard panel with a header.
+    Clean dashboard panel container.
+    No header tools.
     """
 
     def __init__(self, title: str, content: QWidget, parent=None):
         super().__init__(parent)
 
+        self.setObjectName("DashboardSurface")
+        self.setFrameShape(QFrame.NoFrame)
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(12, 12, 12, 12)
+        layout.setSpacing(8)
+
         title_label = QLabel(title)
         title_label.setObjectName("DashboardCardTitle")
         title_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
 
-        self._layout.insertWidget(0, title_label)
-        self._layout.addWidget(content)
+        layout.addWidget(title_label)
+        layout.addWidget(content)

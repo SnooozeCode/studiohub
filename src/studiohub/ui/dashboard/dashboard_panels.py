@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Signal, Qt
+
+from PySide6.QtGui import QTextCursor, QTextCharFormat, QFont, QAction
+from PySide6.QtCore import QSettings, QTimer, QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QWidget,
     QLabel,
@@ -12,7 +14,10 @@ from PySide6.QtWidgets import (
     QListWidgetItem,
     QSizePolicy,
     QFrame,
+    QTextEdit,
+    QToolBar,
 )
+
 
 from studiohub.ui.dashboard.dashboard_container import DashboardSurface
 from studiohub.services.dashboard.snapshot import (
@@ -21,6 +26,9 @@ from studiohub.services.dashboard.snapshot import (
     MonthlyCostBreakdown,
     StudioMoodSlice,
 )
+
+from studiohub.style.typography.rules import apply_typography
+
 
 # ==================================================
 # Base Dashboard Panel
@@ -292,12 +300,91 @@ class RevenuePanel(QWidget):
 
 
 class NotesPanel(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._label = QLabel("Notes")
-        self._label.setWordWrap(True)
-        layout = QVBoxLayout(self)
-        layout.addWidget(self._label)
+    """
+    Rich text dashboard notes panel.
+    Persists via DashboardNotesStore.
+    """
 
-    def set_data(self, data) -> None:
-        self._label.setText(data or "")
+    NOTES_SAVE_DEBOUNCE_MS = 800
+
+    def __init__(self, notes_store, parent=None):
+        super().__init__(parent)
+
+        self._store = notes_store
+        self._loading = False
+
+        self.notes_edit = QTextEdit()
+        self.notes_edit.setObjectName("DashboardNotes")
+        self.notes_edit.setAcceptRichText(True)
+        self.notes_edit.setPlaceholderText("Write your notes here…")
+
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.addWidget(self.notes_edit)
+
+        # Load saved HTML
+        self._load()
+
+        # Debounced autosave
+        self._timer = QTimer(self)
+        self._timer.setSingleShot(True)
+        self._timer.setInterval(self.NOTES_SAVE_DEBOUNCE_MS)
+        self._timer.timeout.connect(self._save)
+
+        self.notes_edit.textChanged.connect(self._on_text_changed)
+
+    # --------------------------------------------------
+
+    def _load(self):
+        html = self._store.load_html()
+        if not html:
+            return
+
+        self._loading = True
+        self.notes_edit.blockSignals(True)
+        self.notes_edit.setHtml(html)
+        self.notes_edit.blockSignals(False)
+        self._loading = False
+
+    def _save(self):
+        self._store.save_html(self.notes_edit.toHtml())
+
+    def _on_text_changed(self):
+        if not self._loading:
+            self._timer.start()
+
+    # --------------------------------------------------
+    # Formatting
+    # --------------------------------------------------
+
+    def _merge_format(self, *, bold=False, italic=False, underline=False):
+        cursor = self.notes_edit.textCursor()
+        if not cursor.hasSelection():
+            cursor.select(QTextCursor.WordUnderCursor)
+
+        fmt = QTextCharFormat()
+        current = cursor.charFormat()
+
+        if bold:
+            fmt.setFontWeight(
+                QFont.Normal
+                if current.fontWeight() == QFont.Bold
+                else QFont.Bold
+            )
+
+        if italic:
+            fmt.setFontItalic(not current.fontItalic())
+
+        if underline:
+            fmt.setFontUnderline(not current.fontUnderline())
+
+        cursor.mergeCharFormat(fmt)
+
+    def _toggle_bold(self):
+        self._merge_format(bold=True)
+
+    def _toggle_italic(self):
+        self._merge_format(italic=True)
+
+    def _toggle_underline(self):
+        self._merge_format(underline=True)
