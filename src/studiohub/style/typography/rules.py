@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from PySide6.QtGui import QFont
 from PySide6 import QtWidgets, QtGui
-from PySide6.QtWidgets import QWidget, QAbstractItemView
-
+from PySide6.QtWidgets import QWidget, QAbstractItemView, QApplication
+from PySide6.QtGui import QFont, QFontDatabase
 # ============================================================
 # Base Typography Configuration
 # ============================================================

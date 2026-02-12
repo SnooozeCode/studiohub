@@ -582,8 +582,8 @@ class MainWindow(QtWidgets.QMainWindow):
     def _refresh_dashboard_from_current_state(self) -> None:
         """Refresh dashboard with current state."""
         dashboard = self._navigation.get_view("dashboard")
-        if dashboard and hasattr(dashboard, "_refresh_dashboard"):
-            dashboard._refresh_dashboard()
+        if dashboard:
+            dashboard.refresh()
     
     # --------------------------------------------------
     # Media Worker Management

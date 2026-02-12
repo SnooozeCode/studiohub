@@ -286,7 +286,6 @@ class StudioMoodPanel(BaseDashboardPanel):
         self.primary.setProperty("mood", data.mood)
         self.primary.style().polish(self.primary)
 
-
 class RevenuePanel(QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)

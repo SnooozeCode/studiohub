@@ -156,6 +156,16 @@ class DashboardView(QWidget):
         self.revenue_panel.set_data(snapshot.revenue)
         # Notes panel is handled separately (loaded from the store)
 
+    def set_loading(self, key: str, is_loading: bool) -> None:
+        """
+        key represents an index pipeline ("patents" or "studio").
+        Only panels that depend on index data should react.
+        """
+
+        if key in ("patents", "studio"):
+            if hasattr(self.content_health_panel, "set_loading"):
+                self.content_health_panel.set_loading(is_loading)
+
     # -----------------------------------------------------------------
     # Slot that writes the current HTML to the notes store
     # -----------------------------------------------------------------
