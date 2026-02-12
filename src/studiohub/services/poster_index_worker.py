@@ -62,10 +62,6 @@ class PosterIndexWorker(QtCore.QObject):
             "posters": posters,
         }
 
-        print("Index path:", self.index_path)
-        print("Archive root:", archive_root)
-        print("Studio root:", studio_root)
-
         self._save_index()
         self._save_mtime_cache()
 
