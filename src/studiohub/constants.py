@@ -4,20 +4,24 @@ from __future__ import annotations
 from typing import TypedDict
 
 # Application metadata
-APP_VERSION = "v0.10.1-beta"
+APP_VERSION = "v0.12.5-beta"
 APP_VENDOR = "SnooozeCo"
 APP_NAME = "StudioHub"
 
 
 class UIConstants:
     """UI sizing and timing constants."""
-    
+
+    # Fonts
+    BASE_FONT_FAMILY = "Inter"
+    BASE_FONT_PX = 14       # Global dial (change once, affects everything)
+
     # Window
     DEFAULT_WIDTH = 1440
     DEFAULT_HEIGHT = 900
     
     # Sidebar
-    SIDEBAR_WIDTH = 240
+    SIDEBAR_WIDTH = 260
     
     # Status bar
     STATUS_BAR_HEIGHT = 38
@@ -48,8 +52,8 @@ REQUIRED_PATHS: dict[str, PathRequirement] = {
         "must_exist": False,
         "type": "file",
     },
-    "paths.patents_root": {
-        "label": "Patents Root",
+    "paths.archive_root": {
+        "label": "Archive Root",
         "must_exist": True,
         "type": "dir",
     },

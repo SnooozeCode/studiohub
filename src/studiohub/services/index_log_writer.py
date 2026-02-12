@@ -13,7 +13,7 @@ def append_index_log(
     *,
     log_path: Path,
     source: str,
-    patents: int,
+    archive: int,
     studio: int,
     duration_ms: int,
     status: str,
@@ -35,7 +35,7 @@ def append_index_log(
             "timestamp": datetime.now().isoformat(timespec="seconds"),
             "machine": socket.gethostname(),
             "source": source,              # startup | refresh_all | manual | etc
-            "patents_count": patents,
+            "archive_count": archive,
             "studio_count": studio,
             "duration_ms": duration_ms,
             "status": status,              # OK | ERROR

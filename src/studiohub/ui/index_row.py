@@ -5,7 +5,7 @@ class IndexRow(QtWidgets.QFrame):
     def __init__(
         self,
         *,
-        patents_added: int,
+        archive_added: int,
         studio_added: int,
         timestamp: str,
         parent=None,
@@ -42,13 +42,13 @@ class IndexRow(QtWidgets.QFrame):
         bottom = QtWidgets.QHBoxLayout()
         bottom.setSpacing(12)
 
-        lbl_patents = QtWidgets.QLabel(f"Patents: +{patents_added}")
-        lbl_patents.setProperty("role", "index-detail")
+        lbl_archive = QtWidgets.QLabel(f"archive: +{archive_added}")
+        lbl_archive.setProperty("role", "index-detail")
 
         lbl_studio = QtWidgets.QLabel(f"Studio: +{studio_added}")
         lbl_studio.setProperty("role", "index-detail")
 
-        bottom.addWidget(lbl_patents)
+        bottom.addWidget(lbl_archive)
         bottom.addWidget(lbl_studio)
         bottom.addStretch(1)
 

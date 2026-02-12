@@ -77,12 +77,12 @@ class MissingFilesViewQt(QtWidgets.QFrame):
         # =================================================
         self.setObjectName("MissingFilesView")
         self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
-        self._active_source = "patents"
+        self._active_source = "archive"
 
         # =================================================
         # STATE
         # =================================================
-        self._source = "patents"
+        self._source = "archive"
         self._data: Dict[str, Any] = {}
         self._index: Dict[str, Any] = {}
         self._icon_cache: Dict[tuple[str, str], QtGui.QIcon] = {}
@@ -94,15 +94,15 @@ class MissingFilesViewQt(QtWidgets.QFrame):
         self.lbl_title = QtWidgets.QLabel("Missing Files")
         self.lbl_title.setProperty("typography", "h3")
 
-        self.btn_patents = QtWidgets.QPushButton("Patents")
+        self.btn_archive = QtWidgets.QPushButton("Archive")
         self.btn_studio = QtWidgets.QPushButton("Studio")
 
-        apply_typography(self.btn_patents, "body")
+        apply_typography(self.btn_archive, "body")
         apply_typography(self.btn_studio, "body")
-        self.btn_patents.setAttribute(Qt.WA_SetFont, True)
+        self.btn_archive.setAttribute(Qt.WA_SetFont, True)
         self.btn_studio.setAttribute(Qt.WA_SetFont, True)
 
-        for b in (self.btn_patents, self.btn_studio):
+        for b in (self.btn_archive, self.btn_studio):
             b.setCheckable(True)
             b.setMinimumWidth(120)
             b.setObjectName("SourceToggle")
@@ -177,13 +177,13 @@ class MissingFilesViewQt(QtWidgets.QFrame):
         # WIRING
         # =================================================
 
-        self.btn_patents.clicked.connect(lambda: self.set_source("patents"))
+        self.btn_archive.clicked.connect(lambda: self.set_source("archive"))
         self.btn_studio.clicked.connect(lambda: self.set_source("studio"))
 
         # Keep group alive (prevents lifetime edge cases)
         self._source_group = QtWidgets.QButtonGroup(self)
         self._source_group.setExclusive(True)
-        self._source_group.addButton(self.btn_patents)
+        self._source_group.addButton(self.btn_archive)
         self._source_group.addButton(self.btn_studio)
 
         # =================================================
@@ -218,7 +218,7 @@ class MissingFilesViewQt(QtWidgets.QFrame):
 
         header_lay.addWidget(self.lbl_title)
         header_lay.addStretch(1)
-        header_lay.addWidget(self.btn_patents)
+        header_lay.addWidget(self.btn_archive)
         header_lay.addWidget(self.btn_studio)
 
         header_outer = QtWidgets.QWidget()
@@ -292,7 +292,7 @@ class MissingFilesViewQt(QtWidgets.QFrame):
     def on_activated(self) -> None:
         # 🔑 enforce default only once
         if not self._has_been_activated:
-            self._source = "patents"
+            self._source = "archive"
             self._has_been_activated = True
 
         self._update_header_buttons()
@@ -429,7 +429,7 @@ class MissingFilesViewQt(QtWidgets.QFrame):
 
                 # 👇 background-aware size logic (as fixed earlier)
                 sizes_with_missing_bg = set()
-                if self._source == "patents":
+                if self._source == "archive":
                     for bg_rec in (missing.get("backgrounds") or {}).values():
                         for s in bg_rec.get("sizes", []):
                             sizes_with_missing_bg.add(s)
@@ -438,7 +438,7 @@ class MissingFilesViewQt(QtWidgets.QFrame):
                     size_exists = size in meta.get("sizes", {})
                     size_missing_output = size in missing_sizes
 
-                    if self._source == "patents":
+                    if self._source == "archive":
                         size_missing_bg = size in sizes_with_missing_bg
                         ok = size_exists and not size_missing_output and not size_missing_bg
                     else:
@@ -446,7 +446,7 @@ class MissingFilesViewQt(QtWidgets.QFrame):
 
                     self._icon(parent, idx, ok)
 
-                if self._source == "patents":
+                if self._source == "archive":
                     parent.setChildIndicatorPolicy(QtWidgets.QTreeWidgetItem.ShowIndicator)
 
                     sizes_meta = meta.get("sizes", {})
@@ -490,12 +490,12 @@ class MissingFilesViewQt(QtWidgets.QFrame):
     # =================================================
 
     def _update_header_buttons(self) -> None:
-        self.btn_patents.setChecked(self._source == "patents")
+        self.btn_archive.setChecked(self._source == "archive")
         self.btn_studio.setChecked(self._source == "studio")
 
         # 🔑 FORCE STYLE REFRESH
-        self.btn_patents.style().unpolish(self.btn_patents)
-        self.btn_patents.style().polish(self.btn_patents)
+        self.btn_archive.style().unpolish(self.btn_archive)
+        self.btn_archive.style().polish(self.btn_archive)
 
         self.btn_studio.style().unpolish(self.btn_studio)
         self.btn_studio.style().polish(self.btn_studio)

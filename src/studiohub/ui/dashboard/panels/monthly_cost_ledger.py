@@ -85,7 +85,7 @@ class MonthlyCostLedgerPanel(QtWidgets.QFrame):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(14)
 
-        # Panel subtitle (matches Patents vs Studio)
+        # Panel subtitle (matches archive vs Studio)
         self.subtitle = QtWidgets.QLabel("Production cost across all prints.")
         apply_typography(self.subtitle, "caption")
         self.subtitle.setObjectName("DashboardCardSubtitle")

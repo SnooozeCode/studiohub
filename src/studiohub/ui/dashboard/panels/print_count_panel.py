@@ -21,7 +21,7 @@ LABEL_INDENT = 6
 # Main Panel
 # ============================================================
 
-class PatentsVsStudioChart(QtWidgets.QFrame):
+class ArchiveVsStudioChart(QtWidgets.QFrame):
     """
     Ledger-style panel.
     Bars are layered frames; colors are 100% QSS-driven.
@@ -32,12 +32,12 @@ class PatentsVsStudioChart(QtWidgets.QFrame):
     
         self._bar_limit = 50  # default expected monthly prints
 
-        self.setObjectName("PatentsVsStudioPanel")
+        self.setObjectName("ArchiveVsStudioPanel")
         self.setAttribute(Qt.WA_StyledBackground, True)
 
-        self._patents = 0
+        self._archive = 0
         self._studio = 0
-        self._delta_patents = 0
+        self._delta_archive = 0
         self._delta_studio = 0
         self._delta_total = 0
 
@@ -117,28 +117,28 @@ class PatentsVsStudioChart(QtWidgets.QFrame):
     def set_values(
         self,
         *,
-        patents: int,
+        archive: int,
         studio: int,
-        delta_patents: int = 0,
+        delta_archive: int = 0,
         delta_studio: int = 0,
         delta_total: int = 0,
     ) -> None:
-        self._patents = max(0, int(patents))
+        self._archive = max(0, int(archive))
         self._studio = max(0, int(studio))
 
-        self._delta_patents = int(delta_patents)
+        self._delta_archive = int(delta_archive)
         self._delta_studio = int(delta_studio)
         self._delta_total = int(delta_total)
 
-        total = max(1, self._patents + self._studio)
+        total = max(1, self._archive + self._studio)
 
-        self.row_archive.set_values(self._patents, self._delta_patents)
+        self.row_archive.set_values(self._archive, self._delta_archive)
         self.row_studio.set_values(self._studio, self._delta_studio)
 
-        self.row_archive.set_fraction(self._patents / total)
+        self.row_archive.set_fraction(self._archive / total)
         self.row_studio.set_fraction(self._studio / total)
 
-        self.total_value.setText(str(self._patents + self._studio))
+        self.total_value.setText(str(self._archive + self._studio))
 
         arrow = "▴" if self._delta_total >= 0 else "▾"
         self.total_delta.setText(f"{arrow} ({abs(self._delta_total)})")

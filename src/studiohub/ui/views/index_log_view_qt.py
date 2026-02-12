@@ -15,7 +15,7 @@ class IndexLogTableModel(QtCore.QAbstractTableModel):
     HEADERS = [
         "Time",
         "Source",
-        "Patents",
+        "Archive",
         "Studio",
         "Total",
         "Duration (ms)",
@@ -85,15 +85,15 @@ class IndexLogTableModel(QtCore.QAbstractTableModel):
         row = self._rows[index.row()]
         col = index.column()
 
-        patents = self._safe_int(row.get("Patents"))
+        archive = self._safe_int(row.get("Archive"))
         studio = self._safe_int(row.get("Studio"))
-        total = patents + studio
+        total = archive + studio
 
         if role == QtCore.Qt.DisplayRole:
             return [
                 self._format_timestamp(row.get("Time", "")),
                 self._format_source(row.get("Source", "")),
-                patents,
+                archive,
                 studio,
                 total,
                 f'{self._safe_int(row.get("Duration (ms)")):,}',
@@ -169,7 +169,7 @@ class IndexLogViewQt(QtWidgets.QFrame):
         # Column widths
         self.table.setColumnWidth(0, 190)  # Time
         self.table.setColumnWidth(1, 140)  # Source
-        self.table.setColumnWidth(2, 90)   # Patents
+        self.table.setColumnWidth(2, 90)   # Archive
         self.table.setColumnWidth(3, 90)   # Studio
         self.table.setColumnWidth(4, 90)   # Total
         self.table.setColumnWidth(5, 130)  # Duration

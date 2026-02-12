@@ -26,7 +26,7 @@ class PosterDTO:
     id: str
     name: str
     size: str
-    source: str  # "patents" | "studio"
+    source: str  # "archive" | "studio"
 
 
 @dataclass(frozen=True)
@@ -171,7 +171,7 @@ class MockupGeneratorViewQt(QtWidgets.QFrame):
         super().__init__(parent)
 
         self._available_by_source: dict[str, list] = {
-            "patents": [],
+            "archive": [],
             "studio": [],
         }
 
@@ -182,34 +182,34 @@ class MockupGeneratorViewQt(QtWidgets.QFrame):
         self._drawer_anim: Optional[QtCore.QPropertyAnimation] = None
         self.drawer_target_width = 280
 
-        self._current_source = "patents"
-        self._posters_cache: Dict[str, Optional[dict]] = {"patents": None, "studio": None}
+        self._current_source = "archive"
+        self._posters_cache: Dict[str, Optional[dict]] = {"archive": None, "studio": None}
         self._selected_template: Optional[dict] = None
 
         # =================================================
         # SOURCE TOGGLES (ACTIVE STATE)
         # =================================================
-        self.btn_patents = QtWidgets.QPushButton("Patents")
+        self.btn_archive = QtWidgets.QPushButton("Archive")
         self.btn_studio = QtWidgets.QPushButton("Studio")
-        apply_typography(self.btn_patents, "body")
+        apply_typography(self.btn_archive, "body")
         apply_typography(self.btn_studio, "body")
-        self.btn_patents.setAttribute(Qt.WA_SetFont, True)
+        self.btn_archive.setAttribute(Qt.WA_SetFont, True)
         self.btn_studio.setAttribute(Qt.WA_SetFont, True)
 
-        for b in (self.btn_patents, self.btn_studio):
+        for b in (self.btn_archive, self.btn_studio):
             b.setCheckable(True)
             b.setMinimumWidth(100)
             b.setObjectName("SourceToggle")
             b.setCursor(QtCore.Qt.PointingHandCursor)
 
-        self.btn_patents.setChecked(True)
+        self.btn_archive.setChecked(True)
 
         source_group = QtWidgets.QButtonGroup(self)
         source_group.setExclusive(True)
-        source_group.addButton(self.btn_patents)
+        source_group.addButton(self.btn_archive)
         source_group.addButton(self.btn_studio)
 
-        self.btn_patents.clicked.connect(lambda: self._set_source("patents"))
+        self.btn_archive.clicked.connect(lambda: self._set_source("archive"))
         self.btn_studio.clicked.connect(lambda: self._set_source("studio"))
 
         # =================================================
@@ -347,7 +347,7 @@ class MockupGeneratorViewQt(QtWidgets.QFrame):
         left_controls.setSpacing(8)
         left_controls.setContentsMargins(0, 10, 0, 10)
 
-        left_controls.addWidget(self.btn_patents)
+        left_controls.addWidget(self.btn_archive)
         left_controls.addWidget(self.btn_studio)
         left_controls.addStretch(1)
 
@@ -567,13 +567,13 @@ class MockupGeneratorViewQt(QtWidgets.QFrame):
 
     def bind_model(self, model):
         self._model = model
-        self._posters_cache = {"patents": None, "studio": None}
-        self._current_source = "patents"
+        self._posters_cache = {"archive": None, "studio": None}
+        self._current_source = "archive"
 
         model.posters_ready.connect(self.set_posters)
         model.templates_ready.connect(self.set_templates)
 
-        model.load_from_index("patents")
+        model.load_from_index("archive")
         model.load_templates()
 
     def set_posters(self, source: str, data: dict):

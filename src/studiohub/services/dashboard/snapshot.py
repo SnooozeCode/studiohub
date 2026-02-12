@@ -19,7 +19,7 @@ class CompletenessSlice:
 
 @dataclass(frozen=True)
 class MonthlyPrintCountSlice:
-    """Used by PatentsVsStudioChart (print_count_panel)."""
+    """Used by ArchiveVsStudioChart (print_count_panel)."""
     archive_this_month: int
     studio_this_month: int
     archive_last_month: int

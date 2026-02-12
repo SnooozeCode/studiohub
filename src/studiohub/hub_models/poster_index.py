@@ -13,7 +13,7 @@ def load_poster_index(path: str | Path) -> dict:
     p = Path(path)
 
     if not p.exists() or p.is_dir():
-        return {"posters": {"patents": {}, "studio": {}}}
+        return {"posters": {"archive": {}, "studio": {}}}
 
     try:
         data = json.loads(p.read_text(encoding="utf-8"))
@@ -22,4 +22,4 @@ def load_poster_index(path: str | Path) -> dict:
     except Exception:
         pass
 
-    return {"posters": {"patents": {}, "studio": {}}}
+    return {"posters": {"archive": {}, "studio": {}}}

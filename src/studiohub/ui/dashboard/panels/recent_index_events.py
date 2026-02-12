@@ -30,7 +30,7 @@ class RecentIndexEvents(QtWidgets.QWidget):
             ts_str = ts.strftime("%b %d · %I:%M %p").lstrip("0") if ts else "—"
 
             lbl = QtWidgets.QLabel(
-                f"{ts_str} · Archive {evt.get('patents', 0)} · Studio {evt.get('studio', 0)}"
+                f"{ts_str} · Archive {evt.get('archive', 0)} · Studio {evt.get('studio', 0)}"
             )
             lbl.setProperty("typography", "body-small")
             apply_typography(lbl, "body-small")

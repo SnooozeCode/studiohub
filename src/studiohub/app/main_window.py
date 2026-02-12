@@ -303,10 +303,16 @@ class MainWindow(QtWidgets.QMainWindow):
         is_valid = self._startup_manager.validate_required_paths(
             on_incomplete=self._on_setup_incomplete
         )
+
+        # Start index build on startup
+        self._index_manager.start_full_index()
+        self._sidebar.set_refresh_enabled(False)
+        self._dash_loading = {"archive", "studio"}
+        self.set_status("Building index...", decay_ms=None)
+
         
         if not is_valid:
-            QtCore.QTimer.singleShot(0, 
-                                    lambda: self._navigation.show_view("settings"))
+            QtCore.QTimer.singleShot(0, lambda: self._navigation.show_view("settings"))
             return
         
         # Load index
@@ -317,8 +323,8 @@ class MainWindow(QtWidgets.QMainWindow):
         self._index_manager.start_file_watcher()
         
         # Show dashboard
-        QtCore.QTimer.singleShot(0,
-                                lambda: self._navigation.show_view("dashboard"))
+        QtCore.QTimer.singleShot(0, lambda: self._navigation.show_view("dashboard"))
+
     
     def _on_setup_incomplete(self, missing: list[str]) -> None:
         """Handle incomplete setup."""
@@ -462,17 +468,17 @@ class MainWindow(QtWidgets.QMainWindow):
         self._refresh_dashboard_from_current_state()
         dashboard = self._navigation.get_view("dashboard")
         if dashboard:
-            dashboard.set_loading("patents", "patents" in self._dash_loading)
+            dashboard.set_loading("archive", "archive" in self._dash_loading)
             dashboard.set_loading("studio", "studio" in self._dash_loading)
     
     def _on_print_manager_activated(self) -> None:
         """Handle print manager activation."""
-        for src in ("patents", "studio"):
+        for src in ("archive", "studio"):
             self._deps.print_manager_model.refresh(src)
     
     def _on_mockup_activated(self) -> None:
         """Handle mockup generator activation."""
-        for src in ("patents", "studio"):
+        for src in ("archive", "studio"):
             try:
                 self._deps.mockup_model.load_from_index(src)
             except Exception:
@@ -524,7 +530,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """Refresh all data (triggered by sidebar button)."""
         self._index_manager.start_full_index()
         self._sidebar.set_refresh_enabled(False)
-        self._dash_loading = {"patents", "studio"}
+        self._dash_loading = {"archive", "studio"}
         self.set_status("Refreshing index...", decay_ms=None)
     
     def _on_index_started(self) -> None:
@@ -546,7 +552,7 @@ class MainWindow(QtWidgets.QMainWindow):
             self._refresh_dashboard_from_current_state()
             dashboard = self._navigation.get_view("dashboard")
             if dashboard:
-                dashboard.set_loading("patents", False)
+                dashboard.set_loading("archive", False)
                 dashboard.set_loading("studio", False)
         
         self.set_status("Index ready", timestamp=True, 
@@ -570,7 +576,7 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def _apply_loaded_index(self, index: dict) -> None:
         """Apply loaded index to all models."""
-        for src in ("patents", "studio"):
+        for src in ("archive", "studio"):
             self._deps.print_manager_model.refresh(src)
             self._deps.mockup_model.load_from_index(src)
             self._deps.missing_model.refresh(src)

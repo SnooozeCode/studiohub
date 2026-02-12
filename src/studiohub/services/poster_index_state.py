@@ -10,10 +10,9 @@ from studiohub.hub_models.poster_index import load_poster_index
 
 
 SOURCE_KEY_MAP = {
-    "patents": "archive",
+    "archive": "archive",
     "studio": "studio",
 }
-
 
 class PosterIndexState(QtCore.QObject):
     """

@@ -256,7 +256,7 @@ class SettingsViewQt(QtWidgets.QFrame):
         # =================================================
         self._path_widgets = {
             "paths.photoshop_exe": self.row_photoshop,
-            "paths.patents_root": self.row_patents,
+            "paths.archive_root": self.row_archive,
             "paths.studio_root": self.row_studio,
             "paths.mockup_templates_root": self.row_mockup_templates,
             "paths.mockup_output_root": self.row_mockup_output,
@@ -321,8 +321,8 @@ class SettingsViewQt(QtWidgets.QFrame):
 
 
     def _build_section_general(self):
-        self.seg_scan_patents = self._boolean_segmented()
-        self.seg_scan_patents.setObjectName("ToggleSwitch")
+        self.seg_scan_archive = self._boolean_segmented()
+        self.seg_scan_archive.setObjectName("ToggleSwitch")
         self.seg_scan_studio = self._boolean_segmented()
         self.seg_scan_studio.setObjectName("ToggleSwitch")
         self.seg_rebuild_index = self._boolean_segmented()
@@ -330,7 +330,7 @@ class SettingsViewQt(QtWidgets.QFrame):
 
 
         for seg in (
-            self.seg_scan_patents,
+            self.seg_scan_archive,
             self.seg_scan_studio,
             self.seg_rebuild_index,
         ):
@@ -342,9 +342,9 @@ class SettingsViewQt(QtWidgets.QFrame):
             description="Startup behavior that affects scanning and indexing.",
             rows=[
                 {
-                    "label": "Scan patents on launch",
+                    "label": "Scan archive on launch",
                     "subtitle": "Automatically scan patent artwork when the app starts",
-                    "control": self.seg_scan_patents,
+                    "control": self.seg_scan_archive,
                 },
                 {
                     "label": "Scan studio on launch",
@@ -372,7 +372,7 @@ class SettingsViewQt(QtWidgets.QFrame):
             "Path to Photoshop.exe"
         )
 
-        self.row_patents = self._path_row(
+        self.row_archive = self._path_row(
             "Archive Folder",
             "Root folder containing restored patent artwork"
         )
@@ -409,7 +409,7 @@ class SettingsViewQt(QtWidgets.QFrame):
 
         for row in [
             self.row_photoshop,
-            self.row_patents,
+            self.row_archive,
             self.row_studio,
             self.row_mockup_templates,
             self.row_mockup_output,
@@ -421,7 +421,7 @@ class SettingsViewQt(QtWidgets.QFrame):
 
         self.row_photoshop.browse_button.clicked.connect(self.browse_photoshop_exe)
         for row in [
-            self.row_patents,
+            self.row_archive,
             self.row_studio,
             self.row_mockup_templates,
             self.row_mockup_output,
@@ -1052,8 +1052,8 @@ class SettingsViewQt(QtWidgets.QFrame):
         self.row_photoshop.line_edit.setText(
             cfg.get("paths", "photoshop_exe", "")
         )
-        self.row_patents.line_edit.setText(
-            cfg.get("paths", "patents_root", "")
+        self.row_archive.line_edit.setText(
+            cfg.get("paths", "archive_root", "")
         )
         self.row_studio.line_edit.setText(
             cfg.get("paths", "studio_root", "")
@@ -1084,8 +1084,8 @@ class SettingsViewQt(QtWidgets.QFrame):
 
         # ---- Startup (boolean segmented)
         self._set_bool_segmented(
-            self.seg_scan_patents,
-            cfg.get("startup", "scan_patents_on_launch", True),
+            self.seg_scan_archive,
+            cfg.get("startup", "scan_archive_on_launch", True),
         )
         self._set_bool_segmented(
             self.seg_scan_studio,
@@ -1140,7 +1140,7 @@ class SettingsViewQt(QtWidgets.QFrame):
     def apply_to_config(self, cfg):
         # ---- Paths (match DEFAULT_CONFIG paths keys)
         cfg.set("paths", "photoshop_exe", self.row_photoshop.line_edit.text())
-        cfg.set("paths", "patents_root", self.row_patents.line_edit.text())
+        cfg.set("paths", "archive_root", self.row_archive.line_edit.text())
         cfg.set("paths", "studio_root", self.row_studio.line_edit.text())
         cfg.set(
             "paths",
@@ -1166,8 +1166,8 @@ class SettingsViewQt(QtWidgets.QFrame):
         # ---- Startup (boolean segmented)
         cfg.set(
             "startup",
-            "scan_patents_on_launch",
-            self._get_bool_segmented(self.seg_scan_patents),
+            "scan_archive_on_launch",
+            self._get_bool_segmented(self.seg_scan_archive),
         )
         cfg.set(
             "startup",

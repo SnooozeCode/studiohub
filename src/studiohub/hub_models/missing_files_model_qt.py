@@ -1,4 +1,3 @@
-from __future__ import annotations
 
 import json
 from pathlib import Path
@@ -11,7 +10,7 @@ from studiohub.hub_models.index_normalization import normalize_background_name
 
 SIZES: Tuple[str, ...] = ("12x18", "18x24", "24x36")
 
-# Background variants expected for PATENTS (normalized keys + display labels)
+# Background variants expected for archive (normalized keys + display labels)
 _EXPECTED_BG_RAW: Tuple[str, ...] = ("Antique Parchment", "Blueprint", "Chalkboard")
 EXPECTED_PATENT_BG: Tuple[Tuple[str, str], ...] = tuple(
     (normalize_background_name(x)["key"], normalize_background_name(x)["label"])
@@ -36,7 +35,7 @@ class MissingFilesModelQt(QtCore.QObject):
     def __init__(self, config_manager: ConfigManager, parent: Optional[QtCore.QObject] = None):
         super().__init__(parent)
         self.config_manager = config_manager
-        self._cache_patents: Dict[str, Any] = {}
+        self._cache_archive: Dict[str, Any] = {}
         self._cache_studio: Dict[str, Any] = {}
 
     # -------------------------------------------------
@@ -44,8 +43,8 @@ class MissingFilesModelQt(QtCore.QObject):
     # -------------------------------------------------
 
     def get_cache(self, source: str) -> Dict[str, Any]:
-        if source == "patents":
-            return self._cache_patents
+        if source == "archive":
+            return self._cache_archive
         if source == "studio":
             return self._cache_studio
         return {}
@@ -55,7 +54,7 @@ class MissingFilesModelQt(QtCore.QObject):
     # -------------------------------------------------
 
     def refresh(self, source: str) -> None:
-        if source not in ("patents", "studio"):
+        if source not in ("archive", "studio"):
             return
 
         self.scan_started.emit(source)
@@ -63,8 +62,8 @@ class MissingFilesModelQt(QtCore.QObject):
         try:
             index = self._load_index()
 
-            if source == "patents":
-                self._cache_patents = self._build_patents(index)
+            if source == "archive":
+                self._cache_archive = self._build_archive(index)
             else:
                 self._cache_studio = self._build_studio(index)
 
@@ -133,8 +132,8 @@ class MissingFilesModelQt(QtCore.QObject):
     # Builders
     # -------------------------------------------------
 
-    def _build_patents(self, index: Dict[str, Any]) -> Dict[str, Any]:
-        posters = (index.get("posters") or {}).get("patents") or {}
+    def _build_archive(self, index: Dict[str, Any]) -> Dict[str, Any]:
+        posters = (index.get("posters") or {}).get("archive") or {}
         out: Dict[str, Any] = {}
 
         for folder_name, meta in sorted(posters.items(), key=lambda kv: kv[0].lower()):

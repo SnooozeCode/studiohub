@@ -376,7 +376,7 @@ class PrintLogState(QtCore.QObject):
         if not value:
             return None
         v = str(value).lower()
-        if v in ("archive", "patents"):
+        if v in ("archive"):
             return "archive"
         if v == "studio":
             return "studio"

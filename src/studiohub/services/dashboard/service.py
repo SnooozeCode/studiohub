@@ -40,7 +40,7 @@ def _normalize_source(src: str | None) -> str | None:
     if not src:
         return None
     v = str(src).lower()
-    if v in ("patents", "archive"):
+    if v in ("archive"):
         return "archive"
     if v == "studio":
         return "studio"
@@ -147,7 +147,6 @@ class DashboardService:
         snapshot = getattr(state, "snapshot", None) or {}
         posters_by_source = snapshot.get("posters", {}) or {}
 
-        # normalize keys: "patents" -> "archive"
         normalized: dict[str, dict] = {}
         for src, posters in posters_by_source.items():
             n = _normalize_source(src) or str(src).lower()

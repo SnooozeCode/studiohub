@@ -160,10 +160,10 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         # =================================================
         # STATE
         # =================================================
-        self._source = "patents"
+        self._source = "archive"
         self._active_size = "12x18"
-        self._avail_sig = {"patents": -1, "studio": -1}
-        self._data_cache = {"patents": {}, "studio": {}}
+        self._avail_sig = {"archive": -1, "studio": -1}
+        self._data_cache = {"archive": {}, "studio": {}}
 
         # -------------------------------------------------
         # Model auto-binding (hub-side wiring safety)
@@ -175,26 +175,26 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         # SOURCE TOGGLES (ACTIVE STATE)
         # =================================================
 
-        self.btn_patents = QtWidgets.QPushButton("Patents")
+        self.btn_archive = QtWidgets.QPushButton("Archive")
         self.btn_studio = QtWidgets.QPushButton("Studio")
-        apply_typography(self.btn_patents, "body")
+        apply_typography(self.btn_archive, "body")
         apply_typography(self.btn_studio, "body")
-        self.btn_patents.setAttribute(Qt.WA_SetFont, True)
+        self.btn_archive.setAttribute(Qt.WA_SetFont, True)
         self.btn_studio.setAttribute(Qt.WA_SetFont, True)
 
 
-        for b in (self.btn_patents, self.btn_studio):
+        for b in (self.btn_archive, self.btn_studio):
             b.setCheckable(True)
             b.setMinimumWidth(100)
             b.setObjectName("SourceToggle")
             b.setCursor(QtCore.Qt.PointingHandCursor)
 
-        self.btn_patents.clicked.connect(lambda: self._set_source("patents"))
+        self.btn_archive.clicked.connect(lambda: self._set_source("archive"))
         self.btn_studio.clicked.connect(lambda: self._set_source("studio"))
 
         source_group = QtWidgets.QButtonGroup(self)
         source_group.setExclusive(True)
-        source_group.addButton(self.btn_patents)
+        source_group.addButton(self.btn_archive)
         source_group.addButton(self.btn_studio)
 
         # =================================================
@@ -261,9 +261,9 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         # DATA VIEWS
         # =================================================
         self.available_stack = QtWidgets.QStackedWidget()
-        self.tree_patents = self._build_available_tree()
+        self.tree_archive = self._build_available_tree()
         self.tree_studio = self._build_available_tree()
-        self.available_stack.addWidget(self.tree_patents)
+        self.available_stack.addWidget(self.tree_archive)
         self.available_stack.addWidget(self.tree_studio)
 
         self.list_queue = QueueList()
@@ -297,7 +297,7 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         left_controls.setSpacing(8)
         left_controls.setContentsMargins(0, 10, 0, 10)
 
-        left_controls.addWidget(self.btn_patents)
+        left_controls.addWidget(self.btn_archive)
         left_controls.addWidget(self.btn_studio)
         left_controls.addStretch(1)
         left_controls.addWidget(self.btn_12x18)
@@ -363,8 +363,8 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         # =================================================
         # INIT STATE
         # =================================================
-        self.btn_patents.setChecked(True)
-        self._set_source("patents", emit=False)
+        self.btn_archive.setChecked(True)
+        self._set_source("archive", emit=False)
 
         repolish(self)
 
@@ -551,7 +551,7 @@ class PrintManagerViewQt(QtWidgets.QFrame):
 
 
     def _tree_for_source(self, source: str) -> QtWidgets.QTreeWidget:
-        return self.tree_patents if source == "patents" else self.tree_studio
+        return self.tree_archive if source == "archive" else self.tree_studio
 
     # =================================================
     # Public API
@@ -777,8 +777,8 @@ class PrintManagerViewQt(QtWidgets.QFrame):
     # =====================================================
 
     def _apply_source_to_stack(self, source: str):
-        if source == "patents":
-            self.available_stack.setCurrentWidget(self.tree_patents)
+        if source == "archive":
+            self.available_stack.setCurrentWidget(self.tree_archive)
         else:
             self.available_stack.setCurrentWidget(self.tree_studio)
 
@@ -801,7 +801,7 @@ class PrintManagerViewQt(QtWidgets.QFrame):
 
     def _set_source(self, source: str, emit: bool = True):
         """
-        Switch the active poster source (patents or studio).
+        Switch the active poster source (archive or studio).
 
         Updates UI toggles, swaps the visible tree, and requests data
         if the selected source is not yet cached.
@@ -814,7 +814,7 @@ class PrintManagerViewQt(QtWidgets.QFrame):
             return
 
         self._source = source
-        self.btn_patents.setChecked(source == "patents")
+        self.btn_archive.setChecked(source == "archive")
         self.btn_studio.setChecked(source == "studio")
 
         self._apply_source_to_stack(source)

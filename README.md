@@ -76,7 +76,7 @@ python main.py
 On first launch, you'll be prompted to configure:
 
 - Photoshop executable path
-- Patents root directory
+- Archive root directory
 - Studio root directory
 - Runtime root directory
 - Print jobs folder

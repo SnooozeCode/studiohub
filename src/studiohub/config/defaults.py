@@ -7,7 +7,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
     "paths": {
         # Asset roots
-        "patents_root": "",
+        "archive_root": "",
         "studio_root": "",
 
         # Mockups / tooling
@@ -25,7 +25,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "theme": "dracula",  # "dracula" | "alucard"
     },
     "startup": {
-        "scan_patents_on_launch": True,
+        "scan_archive_on_launch": True,
         "scan_studio_on_launch": True,
     },
     "print_manager": {

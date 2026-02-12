@@ -12,7 +12,7 @@ class MetaConfig(TypedDict):
 
 
 class PathsConfig(TypedDict):
-    patents_root: str
+    archive_root: str
     studio_root: str
     mockup_templates_root: str
     mockup_output_root: str
@@ -28,7 +28,7 @@ class AppearanceConfig(TypedDict):
 
 
 class StartupConfig(TypedDict):
-    scan_patents_on_launch: bool
+    scan_archive_on_launch: bool
     scan_studio_on_launch: bool
 
 

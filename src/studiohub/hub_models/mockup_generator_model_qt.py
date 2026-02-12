@@ -64,7 +64,7 @@ class MockupGeneratorModelQt(QtCore.QObject):
         self._jobs_dir.mkdir(parents=True, exist_ok=True)
 
         self._posters: Dict[str, Dict[str, List[dict]]] = {
-            "patents": {s: [] for s in SIZES},
+            "archive": {s: [] for s in SIZES},
             "studio": {s: [] for s in SIZES},
         }
 
@@ -102,7 +102,7 @@ class MockupGeneratorModelQt(QtCore.QObject):
         """
         Index-native availability (PARITY with PrintManagerModelQt):
 
-        - Patents: sizes[*].backgrounds[*].path
+        - Archive: sizes[*].backgrounds[*].path
         - Studio: sizes[*].files fallback
         """
         index = self._load_index()
@@ -129,7 +129,7 @@ class MockupGeneratorModelQt(QtCore.QObject):
                     continue
 
                 # -----------------------------
-                # PATENTS → background-aware
+                # ARCHIVE → background-aware
                 # -----------------------------
                 backgrounds = size_meta.get("backgrounds") or {}
                 if backgrounds:

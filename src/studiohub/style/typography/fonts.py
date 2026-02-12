@@ -2,12 +2,12 @@ from pathlib import Path
 from PySide6.QtGui import QFont, QFontDatabase, QFontInfo
 from PySide6.QtWidgets import QApplication
 
-from studiohub.style.typography.rules import BASE_FONT_FAMILY, BASE_PX
+from studiohub.constants import UIConstants
 
 
 def apply_base_app_font(app: QApplication) -> None:
-    font = QFont(BASE_FONT_FAMILY)
-    font.setPointSizeF(BASE_PX)
+    font = QFont(UIConstants.BASE_FONT_FAMILY)
+    font.setPointSizeF(UIConstants.BASE_FONT_PX)
     app.setFont(font)
 
 
@@ -30,4 +30,4 @@ def print_base_font():
     font = app.font()
     info = QFontInfo(font)
 
-    print(f"[Font] = {info.family()} - {font.pointSizeF()}")
+    print(f"[Font] {info.family()} {font.pointSizeF()}")

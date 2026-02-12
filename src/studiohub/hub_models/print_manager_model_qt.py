@@ -83,7 +83,7 @@ class PrintManagerModelQt(QtCore.QObject):
 
         # Availability cache (per source)
         self._available: Dict[str, dict] = {
-            "patents": {},
+            "archive": {},
             "studio": {},
         }
 
@@ -117,13 +117,13 @@ class PrintManagerModelQt(QtCore.QObject):
     # -------------------------------------------------
 
     def ensure(self, source: str) -> None:
-        if source not in ("patents", "studio"):
+        if source not in ("archive", "studio"):
             return
         if not self._available.get(source):
             self.refresh(source)
 
     def refresh(self, source: str) -> None:
-        if source not in ("patents", "studio"):
+        if source not in ("archive", "studio"):
             return
 
         self.scan_started.emit(source)
@@ -138,7 +138,7 @@ class PrintManagerModelQt(QtCore.QObject):
             self.scan_finished.emit(source, self._available[source])
 
     def get_available(self, source: str) -> dict:
-        if source not in ("patents", "studio"):
+        if source not in ("archive", "studio"):
             return {}
         return self._available.get(source, {}) or {}
 
@@ -420,12 +420,12 @@ class PrintManagerModelQt(QtCore.QObject):
             data = load_poster_index()
 
         if not isinstance(data, dict):
-            return {"posters": {"patents": {}, "studio": {}}}
+            return {"posters": {"archive": {}, "studio": {}}}
 
         if "posters" not in data or not isinstance(data.get("posters"), dict):
-            data["posters"] = {"patents": {}, "studio": {}}
+            data["posters"] = {"archive": {}, "studio": {}}
 
-        for k in ("patents", "studio"):
+        for k in ("archive", "studio"):
             if not isinstance(data["posters"].get(k), dict):
                 data["posters"][k] = {}
 
@@ -455,7 +455,7 @@ class PrintManagerModelQt(QtCore.QObject):
                 if not size_meta.get("exists"):
                     continue
 
-                # Patents: background-aware
+                # Archive: background-aware
                 bgs = size_meta.get("backgrounds") or {}
                 if bgs:
                     for bg_key, bg_rec in bgs.items():

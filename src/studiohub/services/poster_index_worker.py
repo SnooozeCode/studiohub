@@ -48,11 +48,11 @@ class PosterIndexWorker(QtCore.QObject):
         self.finished.emit(duration_ms, "OK")
 
     def _full_rebuild(self):
-        patents_root = Path(self.config_manager.get("paths", "patents_root"))
+        archive_root = Path(self.config_manager.get("paths", "archive_root"))
         studio_root = Path(self.config_manager.get("paths", "studio_root"))
 
         posters = {
-            "patents": self._scan_root(patents_root),
+            "archive": self._scan_root(archive_root),
             "studio": self._scan_root(studio_root),
         }
 
@@ -61,6 +61,10 @@ class PosterIndexWorker(QtCore.QObject):
             "generated_at": datetime.utcnow().isoformat(timespec="seconds"),
             "posters": posters,
         }
+
+        print("Index path:", self.index_path)
+        print("Archive root:", archive_root)
+        print("Studio root:", studio_root)
 
         self._save_index()
         self._save_mtime_cache()
@@ -152,8 +156,8 @@ class PosterIndexWorker(QtCore.QObject):
         return out
 
     def _resolve_source(self, poster_path: Path) -> str | None:
-        if poster_path.parent == Path(self.config_manager.get("paths", "patents_root")):
-            return "patents"
+        if poster_path.parent == Path(self.config_manager.get("paths", "archive_root")):
+            return "archive"
         if poster_path.parent == Path(self.config_manager.get("paths", "studio_root")):
             return "studio"
         return None
@@ -165,7 +169,7 @@ class PosterIndexWorker(QtCore.QObject):
             self.index = {
                 "cache_version": 2,
                 "generated_at": None,
-                "posters": {"patents": {}, "studio": {}},
+                "posters": {"archive": {}, "studio": {}},
             }
 
     def _save_index(self):

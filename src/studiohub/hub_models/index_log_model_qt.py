@@ -37,7 +37,7 @@ class IndexLogModelQt(QtCore.QObject):
                     rows.append({
                         "Time": rec.get("timestamp", ""),
                         "Source": rec.get("source", ""),
-                        "Patents": rec.get("patents_count", 0),
+                        "Archive": rec.get("archive_count", 0),
                         "Studio": rec.get("studio_count", 0),
                         "Duration (ms)": rec.get("duration_ms", 0),
                         "Status": rec.get("status", ""),

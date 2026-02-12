@@ -158,11 +158,11 @@ class DashboardView(QWidget):
 
     def set_loading(self, key: str, is_loading: bool) -> None:
         """
-        key represents an index pipeline ("patents" or "studio").
+        key represents an index pipeline ("archive" or "studio").
         Only panels that depend on index data should react.
         """
 
-        if key in ("patents", "studio"):
+        if key in ("archive", "studio"):
             if hasattr(self.content_health_panel, "set_loading"):
                 self.content_health_panel.set_loading(is_loading)
 

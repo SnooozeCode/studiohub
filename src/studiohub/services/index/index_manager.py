@@ -72,7 +72,7 @@ class IndexManager(QtCore.QObject):
             path = self._config.get_poster_index_path()
             return load_poster_index(path)
         except Exception:
-            return {"posters": {"patents": {}, "studio": {}}}
+            return {"posters": {"archive": {}, "studio": {}}}
     
     def start_full_index(self) -> bool:
         """
@@ -119,7 +119,7 @@ class IndexManager(QtCore.QObject):
             return
         
         try:
-            archive_root = Path(self._config.get("paths", "patents_root", ""))
+            archive_root = Path(self._config.get("paths", "archive_root", ""))
             studio_root = Path(self._config.get("paths", "studio_root", ""))
             
             if not archive_root.exists() or not studio_root.exists():
