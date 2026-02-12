@@ -96,7 +96,7 @@ class BaseActionPanel(QWidget):
         self._surface.style().unpolish(self._surface)
         self._surface.style().polish(self._surface)
 
-        surface_layout = QVBoxLayout()
+        surface_layout = self._surface.layout()
         surface_layout.setContentsMargins(16, 16, 16, 16)
         surface_layout.setSpacing(6)
 
@@ -176,6 +176,19 @@ class PrintReadinessPanel(BaseDashboardPanel):
         self.meta.setText("Print readiness")
 
 # ==================================================
+# Studio Mood Panel
+# ==================================================
+class StudioMoodPanel(BaseDashboardPanel):
+    def set_data(self, data: StudioMoodSlice) -> None:
+        self.primary.setText(data.label)
+        self.secondary.hide()
+        self.meta.hide()
+
+        # semantic hook for QSS
+        self.primary.setProperty("mood", data.mood)
+        self.primary.style().polish(self.primary)
+
+# ==================================================
 # New Print Job Panel
 # ==================================================
 
@@ -217,6 +230,7 @@ class MonthlyPrintCountsPanel(BaseDashboardPanel):
         self.meta.setText(f"This month · Δ {data.delta_total:+d}")
         self.placeholder.hide()
 
+
 # ==================================================
 # Monthly Cost Panel
 # ==================================================
@@ -239,52 +253,8 @@ class MonthlyCostPanel(BaseDashboardPanel):
         self.placeholder.hide()
 
 # ==================================================
-# Recent Activity Panels
+# Revenue Panel
 # ==================================================
-
-class RecentPrintJobsPanel(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._list = QListWidget()
-        layout = QVBoxLayout(self)
-        layout.addWidget(self._list)
-
-    def set_data(self, jobs: list[dict]) -> None:
-        self._list.clear()
-        for job in jobs:
-            ts = job.get("timestamp", "")
-            label = job.get("label", "Print job")
-            self._list.addItem(f"{ts} · {label}")
-
-
-class RecentIndexEventsPanel(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        self._list = QListWidget()
-        layout = QVBoxLayout(self)
-        layout.addWidget(self._list)
-
-    def set_data(self, events: list[dict]) -> None:
-        self._list.clear()
-        for evt in events:
-            ts = evt.get("timestamp", "")
-            status = evt.get("status", "")
-            self._list.addItem(QListWidgetItem(f"{ts} · {status}"))
-
-
-# ==================================================
-# KPI / Last Index Panel
-# ==================================================
-
-class StudioMoodPanel(BaseDashboardPanel):
-    def set_data(self, data: StudioMoodSlice) -> None:
-        self.primary.setText(data.label)
-        self.secondary.hide()
-        self.meta.hide()
-
-        # semantic hook for QSS
-        self.primary.setProperty("mood", data.mood)
-        self.primary.style().polish(self.primary)
 
 class RevenuePanel(QWidget):
     def __init__(self, parent=None):
@@ -297,6 +267,9 @@ class RevenuePanel(QWidget):
         # placeholder until snapshot.revenue exists
         self._label.setText(str(data))
 
+# ==================================================
+# Notes Panel
+# ==================================================
 
 class NotesPanel(QWidget):
     """

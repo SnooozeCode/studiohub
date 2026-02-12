@@ -250,7 +250,11 @@ class MainWindow(QtWidgets.QMainWindow):
             )
 
         dashboard.open_print_log_requested.connect(
-            lambda: self._navigate_to("print_jobs")
+            lambda: self._navigation.show_view("print_jobs")
+        )
+        
+        dashboard.new_print_job_panel.triggered.connect(
+            lambda: self._navigation.show_view("print_manager")
         )
 
         # Index manager signals
