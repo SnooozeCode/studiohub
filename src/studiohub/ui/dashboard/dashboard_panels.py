@@ -354,6 +354,23 @@ class NotesPanel(QWidget):
             self._timer.start()
 
     # --------------------------------------------------
+    # Dashboard contract
+    # --------------------------------------------------
+
+    def set_data(self, html: str) -> None:
+        """Set notes content (rich text HTML)."""
+        self._loading = True
+        self.notes_edit.blockSignals(True)
+        self.notes_edit.setHtml(html or "")
+        self.notes_edit.blockSignals(False)
+        self._loading = False
+
+    def get_data(self) -> str:
+        """Return notes content as HTML."""
+        return self.notes_edit.toHtml()
+
+
+    # --------------------------------------------------
     # Formatting
     # --------------------------------------------------
 
