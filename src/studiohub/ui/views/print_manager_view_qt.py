@@ -125,7 +125,7 @@ class PrintManagerViewQt(QtWidgets.QFrame):
 
     Responsibilities:
         - Render available posters by source and size
-        - Maintain UI state (active source, active size)
+        - Maintain UI state (active source, active size, active background filter)
         - Cache data provided by the hub
         - Emit intent signals (rescan, queue changes, send)
 
@@ -164,6 +164,10 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         self._active_size = "12x18"
         self._avail_sig = {"archive": -1, "studio": -1}
         self._data_cache = {"archive": {}, "studio": {}}
+        self._current_bg_filter: Optional[str] = None
+        self._background_buttons: List[QtWidgets.QPushButton] = []
+        self._background_button_group = QtWidgets.QButtonGroup(self)
+        self._background_button_group.setExclusive(False)  # Allow toggling off
 
         # -------------------------------------------------
         # Model auto-binding (hub-side wiring safety)
@@ -172,22 +176,19 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         self._model = None
 
         # =================================================
-        # SOURCE TOGGLES (ACTIVE STATE)
+        # SOURCE TOGGLES
         # =================================================
-
         self.btn_archive = QtWidgets.QPushButton("Archive")
         self.btn_studio = QtWidgets.QPushButton("Studio")
-        apply_typography(self.btn_archive, "body")
-        apply_typography(self.btn_studio, "body")
-        self.btn_archive.setAttribute(Qt.WA_SetFont, True)
-        self.btn_studio.setAttribute(Qt.WA_SetFont, True)
-
-
+        
         for b in (self.btn_archive, self.btn_studio):
             b.setCheckable(True)
-            b.setMinimumWidth(100)
+            b.setMinimumWidth(80)
             b.setObjectName("SourceToggle")
             b.setCursor(QtCore.Qt.PointingHandCursor)
+            font = b.font()
+            font.setPointSize(9)
+            b.setFont(font)
 
         self.btn_archive.clicked.connect(lambda: self._set_source("archive"))
         self.btn_studio.clicked.connect(lambda: self._set_source("studio"))
@@ -198,23 +199,29 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         source_group.addButton(self.btn_studio)
 
         # =================================================
-        # SIZE TOGGLES (ACTIVE STATE)
+        # FILTER BUTTONS (same row, right-aligned)
+        # =================================================
+        self.filter_container = QtWidgets.QWidget()
+        self.filter_container.setVisible(False)  # Only visible for Archive
+        self.filter_layout = QtWidgets.QHBoxLayout(self.filter_container)
+        self.filter_layout.setContentsMargins(0, 0, 0, 0)
+        self.filter_layout.setSpacing(4)
+
+        # =================================================
+        # SIZE TOGGLES (bottom left)
         # =================================================
         self.btn_12x18 = QtWidgets.QPushButton("12×18")
         self.btn_18x24 = QtWidgets.QPushButton("18×24")
         self.btn_24x36 = QtWidgets.QPushButton("24×36")
-        apply_typography(self.btn_12x18, "body")
-        apply_typography(self.btn_18x24, "body")
-        apply_typography(self.btn_24x36, "body")
-        self.btn_12x18.setAttribute(Qt.WA_SetFont, True)
-        self.btn_18x24.setAttribute(Qt.WA_SetFont, True)
-        self.btn_24x36.setAttribute(Qt.WA_SetFont, True)
-
+        
         for b in (self.btn_12x18, self.btn_18x24, self.btn_24x36):
             b.setCheckable(True)
-            b.setMinimumWidth(80)
+            b.setMinimumWidth(70)
             b.setObjectName("SourceToggle")
             b.setCursor(QtCore.Qt.PointingHandCursor)
+            font = b.font()
+            font.setPointSize(9)
+            b.setFont(font)
 
         self.btn_12x18.setChecked(True)
 
@@ -232,30 +239,26 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         # QUEUE / ACTION BUTTONS
         # =================================================
         self.btn_clear = QtWidgets.QPushButton("Clear Queue")
-        apply_typography(self.btn_clear, "body")
-        self.btn_clear.setAttribute(Qt.WA_SetFont, True)
         self.btn_clear.setObjectName("SourceToggle")
         self.btn_clear.setProperty("danger", True)
         self.btn_clear.setCursor(QtCore.Qt.PointingHandCursor)
         self.btn_clear.clicked.connect(self.queue_clear_requested.emit)
-
-        self.btn_print_log = QtWidgets.QPushButton("View Print Log")
-        apply_typography(self.btn_print_log, "body")
-        self.btn_print_log.setAttribute(Qt.WA_SetFont, True)
-        self.btn_print_log.setObjectName("SourceToggle")
-        self.btn_print_log.setProperty("link", True)
+        
+        font = self.btn_clear.font()
+        font.setPointSize(9)
+        self.btn_clear.setFont(font)
 
         self.btn_reprint = QtWidgets.QPushButton("Reprint Last Batch")
         self.btn_reprint.setObjectName("SourceToggle")
         self.btn_reprint.setEnabled(False)
         self.btn_reprint.setVisible(False)
+        self.btn_reprint.setFont(font)
 
         self.btn_send = QtWidgets.QPushButton("Send to Photoshop")
-        apply_typography(self.btn_send, "body")
-        self.btn_send.setAttribute(Qt.WA_SetFont, True)
         self.btn_send.setProperty("primary", True)
         self.btn_send.setObjectName("SourceToggle")
         self.btn_send.clicked.connect(self._confirm_and_send)
+        self.btn_send.setFont(font)
 
         # =================================================
         # DATA VIEWS
@@ -267,7 +270,11 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         self.available_stack.addWidget(self.tree_studio)
 
         self.list_queue = QueueList()
-        apply_view_typography(self.list_queue, "body")
+        try:
+            apply_view_typography(self.list_queue, "body")
+        except:
+            pass
+            
         self.list_queue.items_dropped.connect(self.queue_add_requested)
         self.list_queue.remove_requested.connect(self._on_remove_paths_requested)
         self.list_queue.itemSelectionChanged.connect(
@@ -291,29 +298,21 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         root.setColumnStretch(1, 4)
 
         # =================================================
-        # CONTROL ROW — LEFT (POSTERS)
+        # TOP ROW - Source toggles + Filter buttons (left), Clear (right)
         # =================================================
-        left_controls = QtWidgets.QHBoxLayout()
-        left_controls.setSpacing(8)
-        left_controls.setContentsMargins(0, 10, 0, 10)
+        top_row_left = QtWidgets.QHBoxLayout()
+        top_row_left.setSpacing(8)
+        top_row_left.addWidget(self.btn_archive)
+        top_row_left.addWidget(self.btn_studio)
+        top_row_left.addStretch(1)
+        top_row_left.addWidget(self.filter_container)  # Filter buttons here, right-aligned
 
-        left_controls.addWidget(self.btn_archive)
-        left_controls.addWidget(self.btn_studio)
-        left_controls.addStretch(1)
-        left_controls.addWidget(self.btn_12x18)
-        left_controls.addWidget(self.btn_18x24)
-        left_controls.addWidget(self.btn_24x36)
+        top_row_right = QtWidgets.QHBoxLayout()
+        top_row_right.addStretch(1)
+        top_row_right.addWidget(self.btn_clear)
 
-        root.addLayout(left_controls, 0, 0)
-
-        # =================================================
-        # CONTROL ROW — RIGHT (QUEUE)
-        # =================================================
-        right_controls = QtWidgets.QHBoxLayout()
-        right_controls.addStretch(1)
-        right_controls.addWidget(self.btn_clear)
-
-        root.addLayout(right_controls, 0, 1)
+        root.addLayout(top_row_left, 0, 0)
+        root.addLayout(top_row_right, 0, 1)
 
         # =================================================
         # POSTERS TABLE
@@ -344,21 +343,22 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         root.addWidget(queue_table, 1, 1)
 
         # =================================================
-        # FOOTER ROW
+        # BOTTOM ROW - Size toggles (left) and Send (right)
         # =================================================
-        left_footer = QtWidgets.QHBoxLayout()
-        left_footer.setSpacing(8)
-        left_footer.addWidget(self.btn_print_log)
-        left_footer.addStretch(1)
+        bottom_row_left = QtWidgets.QHBoxLayout()
+        bottom_row_left.setSpacing(8)
+        bottom_row_left.addWidget(self.btn_12x18)
+        bottom_row_left.addWidget(self.btn_18x24)
+        bottom_row_left.addWidget(self.btn_24x36)
+        bottom_row_left.addStretch(1)
 
-        right_footer = QtWidgets.QHBoxLayout()
-        right_footer.setSpacing(8)
-        right_footer.addStretch(1)
-        right_footer.addWidget(self.btn_reprint)
-        right_footer.addWidget(self.btn_send)
+        bottom_row_right = QtWidgets.QHBoxLayout()
+        bottom_row_right.addStretch(1)
+        bottom_row_right.addWidget(self.btn_reprint)
+        bottom_row_right.addWidget(self.btn_send)
 
-        root.addLayout(left_footer, 2, 0)
-        root.addLayout(right_footer, 2, 1)
+        root.addLayout(bottom_row_left, 2, 0)
+        root.addLayout(bottom_row_right, 2, 1)
 
         # =================================================
         # INIT STATE
@@ -371,7 +371,26 @@ class PrintManagerViewQt(QtWidgets.QFrame):
 
     # =================================================
     # Construction helpers
-    # =====================================================
+    # =================================================
+
+    def _create_filter_button(self, text: str, bg_value: str) -> QtWidgets.QPushButton:
+        """Create a filter button with exact same styling as source toggles"""
+        btn = QtWidgets.QPushButton(text)
+        btn.setCheckable(True)
+        btn.setMinimumWidth(70)
+        btn.setObjectName("SourceToggle")  # Same styling as Archive/Studio
+        btn.setCursor(QtCore.Qt.PointingHandCursor)
+        
+        # Same font as source toggles
+        font = btn.font()
+        font.setPointSize(9)
+        btn.setFont(font)
+        
+        btn.setProperty("bg_value", bg_value)
+        btn.clicked.connect(lambda checked, val=bg_value: self._on_filter_button_clicked(val))
+        self._background_button_group.addButton(btn)
+        
+        return btn
 
     # =================================================
     # Send Confirmation (Reprint Flag)
@@ -528,13 +547,15 @@ class PrintManagerViewQt(QtWidgets.QFrame):
 
 
     def _build_available_tree(self) -> QtWidgets.QTreeWidget:
-        rowProfile = RowProfile.STANDARD  # ← explicit, readable default
+        rowProfile = RowProfile.STANDARD
 
         tree = QtWidgets.QTreeWidget()
         tree.setHeaderHidden(True)
-        apply_view_typography(tree, "tree")
+        try:
+            apply_view_typography(tree, "tree")
+        except:
+            pass
 
-        # Semantic behavior (view-owned)
         tree.setSelectionMode(QtWidgets.QAbstractItemView.ExtendedSelection)
         tree.setEditTriggers(QtWidgets.QAbstractItemView.NoEditTriggers)
         tree.setDragEnabled(True)
@@ -543,7 +564,6 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         tree.setExpandsOnDoubleClick(True)
         tree.setAnimated(False)
 
-        # Centralized row behavior
         configure_view(tree, profile=rowProfile, role="posters-tree", alternating=True)
 
         tree.itemDoubleClicked.connect(self._emit_add_selected)
@@ -554,8 +574,112 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         return self.tree_archive if source == "archive" else self.tree_studio
 
     # =================================================
+    # Background Filter Methods
+    # =================================================
+
+    def _update_background_selector(self, source: str):
+        """Show/hide filter buttons and populate with unique backgrounds"""
+        if source == "archive":
+            # Extract unique backgrounds from archive data
+            backgrounds = set()
+            data = self._data_cache.get("archive", {})
+            for size_items in data.values():
+                for item in size_items:
+                    bg_label = item.get("background_label", "")
+                    if bg_label:
+                        backgrounds.add(bg_label)
+            
+            # Clear existing buttons
+            for btn in self._background_buttons:
+                btn.deleteLater()
+            self._background_buttons.clear()
+            
+            # Remove all buttons from button group
+            for btn in self._background_button_group.buttons():
+                self._background_button_group.removeButton(btn)
+            
+            # Sort backgrounds alphabetically and create buttons
+            if backgrounds:
+                for bg in sorted(backgrounds):
+                    btn = self._create_filter_button(bg, bg)
+                    self.filter_layout.addWidget(btn)
+                    self._background_buttons.append(btn)
+                
+                # Show filter container
+                self.filter_container.setVisible(True)
+            else:
+                self.filter_container.setVisible(False)
+            
+            # No filter active by default
+            self._current_bg_filter = None
+        else:
+            self.filter_container.setVisible(False)
+
+    def _on_filter_button_clicked(self, bg_value: str):
+        """Handle filter button clicks - toggle on/off"""
+        if self._source != "archive":
+            return
+        
+        # If clicking the same button, clear filter
+        if self._current_bg_filter == bg_value:
+            self._current_bg_filter = None
+            # Uncheck all buttons
+            for btn in self._background_button_group.buttons():
+                btn.setChecked(False)
+        else:
+            # Uncheck all buttons first
+            for btn in self._background_button_group.buttons():
+                btn.setChecked(False)
+            # Set new filter and check the clicked button
+            self._current_bg_filter = bg_value
+            # Find and check the button with this bg_value
+            for btn in self._background_button_group.buttons():
+                if btn.property("bg_value") == bg_value:
+                    btn.setChecked(True)
+                    break
+        
+        self._refresh_current_tree()
+
+    def _populate_tree_with_filter(self, tree: QtWidgets.QTreeWidget, data: dict, bg_filter: Optional[str] = None):
+        """Populate tree with optional background filter"""
+        tree.setUpdatesEnabled(False)
+        tree.blockSignals(True)
+        tree.setSortingEnabled(False)
+        tree.clear()
+
+        items = (data or {}).get(self._active_size, []) or []
+        
+        for it in items:
+            # Apply background filter if set
+            if bg_filter and it.get("background_label", "") != bg_filter:
+                continue
+            
+            # When a specific filter is active, show only the poster name without background
+            if bg_filter:
+                full_name = it.get("name", "")
+                # Remove everything after " — " if it exists
+                if " — " in full_name:
+                    display_name = full_name.split(" — ")[0]
+                else:
+                    display_name = full_name
+            else:  # No filter active - show full names with backgrounds
+                display_name = it.get("name", "")
+                
+            row = QtWidgets.QTreeWidgetItem([display_name])
+            row.setData(0, QtCore.Qt.UserRole, it)
+            row.setFlags(
+                QtCore.Qt.ItemIsEnabled
+                | QtCore.Qt.ItemIsSelectable
+                | QtCore.Qt.ItemIsDragEnabled
+            )
+            tree.addTopLevelItem(row)
+
+        tree.blockSignals(False)
+        tree.setUpdatesEnabled(True)
+
+    # =================================================
     # Public API
-    # =====================================================
+    # =================================================
 
     def set_reprint_available(self, available: bool):
         self.btn_reprint.setVisible(available)
@@ -577,7 +701,7 @@ class PrintManagerViewQt(QtWidgets.QFrame):
 
 
     # -------------------------------------------------
-    # Model auto-binding (so refresh results actually reach the view)
+    # Model auto-binding
     # -------------------------------------------------
 
     def _auto_bind_model(self) -> None:
@@ -612,7 +736,6 @@ class PrintManagerViewQt(QtWidgets.QFrame):
 
     @QtCore.Slot(str, object)
     def _on_model_scan_finished(self, source: str, data: object) -> None:
-        # Delegate to existing cache + UI update path.
         if isinstance(data, dict):
             self.set_data(source, data)
         else:
@@ -620,14 +743,12 @@ class PrintManagerViewQt(QtWidgets.QFrame):
 
     @QtCore.Slot(str)
     def _on_model_error(self, msg: str) -> None:
-        # Avoid modal spam; just print for now.
         print("[PrintManager] refresh error:", msg)
 
     def on_activated(self):
         self._auto_bind_model()
 
         if self._model:
-            # 🔑 FORCE refresh instead of relying on hub
             self._model.refresh(self._source)
 
         self.source_changed.emit(self.current_source())
@@ -643,57 +764,35 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         return hash("\n".join(parts))
 
     def _populate_tree(self, tree: QtWidgets.QTreeWidget, data: dict):
-        tree.setUpdatesEnabled(False)
-        tree.blockSignals(True)
-        tree.setSortingEnabled(False)
-        tree.clear()
-
-        items = (data or {}).get(self._active_size, []) or []
-
-        for it in items:
-            row = QtWidgets.QTreeWidgetItem([it.get("name", "")])
-            row.setData(0, QtCore.Qt.UserRole, it)
-            row.setFlags(
-                QtCore.Qt.ItemIsEnabled
-                | QtCore.Qt.ItemIsSelectable
-                | QtCore.Qt.ItemIsDragEnabled
-            )
-            tree.addTopLevelItem(row)
-
-        tree.blockSignals(False)
-        tree.setUpdatesEnabled(True)
+        """Standard tree population (no filter)"""
+        self._populate_tree_with_filter(tree, data, None)
 
 
     def set_data(self, source: str, data: dict):
         """
         Receive and cache available poster data for a given source.
-
-        Performs change detection to avoid unnecessary UI rebuilds.
-        Updates the visible tree if the provided source is active.
         """
-
-        # Cache latest data so size toggles can re-render without rescan
         self._data_cache[source] = data or {}
 
         sig = self._data_signature(data or {})
         if self._avail_sig.get(source) == sig:
-            # If this source is visible, still ensure the tree matches active size
             if source == self._source:
                 self._refresh_current_tree()
             return
 
         self._avail_sig[source] = sig
 
-        # Populate the tree for that source (even if not visible, so it's ready)
         tree = self._tree_for_source(source)
         self._populate_tree(tree, self._data_cache.get(source) or {})
 
         if source == self._source:
             self._apply_source_to_stack(source)
+            # Update background selector when data changes
+            self._update_background_selector(source)
 
     # =================================================
     # Queue Rendering
-    # =====================================================
+    # =================================================
 
     def set_queue(self, items: List[dict]):
         self.list_queue.clear()
@@ -737,17 +836,15 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         self._sync_queue_row_selection_props()
     # =================================================
     # Frame Builders (delegated to shared module)
-    # =====================================================
+    # =================================================
 
     def _base_row_frame(self, *, variant: str) -> QtWidgets.QFrame:
         return self._queue_rows.base_row_frame(variant=variant)
 
     def _build_pair_frame(self, pair: List[dict], first: bool) -> QtWidgets.QFrame:
-        # 'first' kept for API compatibility (no visual impact)
         return self._queue_rows.build_pair_frame(pair)
 
     def _build_single_frame(self, it: dict, first: bool) -> QtWidgets.QFrame:
-        # 'first' kept for API compatibility (no visual impact)
         return self._queue_rows.build_single_frame(it)
 
     def _build_badge(self, text: str, *, variant: str) -> QtWidgets.QLabel:
@@ -758,8 +855,8 @@ class PrintManagerViewQt(QtWidgets.QFrame):
 
 
     # =================================================
-    # Selection syncing (properties only; theme controls visuals)
-    # =====================================================
+    # Selection syncing
+    # =================================================
 
     def _sync_queue_row_selection_props(self) -> None:
         for i in range(self.list_queue.count()):
@@ -768,13 +865,12 @@ class PrintManagerViewQt(QtWidgets.QFrame):
             if not widget:
                 continue
 
-            # Toggle a boolean property; stylesheet handles the look
             widget.setProperty("selected", bool(item.isSelected()))
             repolish(widget)
 
     # =================================================
     # Internals
-    # =====================================================
+    # =================================================
 
     def _apply_source_to_stack(self, source: str):
         if source == "archive":
@@ -786,7 +882,11 @@ class PrintManagerViewQt(QtWidgets.QFrame):
     def _refresh_current_tree(self):
         tree = self._current_available_tree()
         data = self._data_cache.get(self._source) or {}
-        self._populate_tree(tree, data)
+        
+        if hasattr(self, '_current_bg_filter') and self._source == "archive" and self._current_bg_filter:
+            self._populate_tree_with_filter(tree, data, self._current_bg_filter)
+        else:
+            self._populate_tree(tree, data)
 
 
     def _set_size(self, size: str):
@@ -794,21 +894,12 @@ class PrintManagerViewQt(QtWidgets.QFrame):
             return
 
         self._active_size = size
-
-        # Rebuild visible tree immediately using cached data (no rescan needed)
         self._refresh_current_tree()
 
 
     def _set_source(self, source: str, emit: bool = True):
         """
         Switch the active poster source (archive or studio).
-
-        Updates UI toggles, swaps the visible tree, and requests data
-        if the selected source is not yet cached.
-
-        Emits:
-            - source_changed (optional)
-            - rescan_requested (if data missing)
         """
         if source == self._source:
             return
@@ -817,13 +908,17 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         self.btn_archive.setChecked(source == "archive")
         self.btn_studio.setChecked(source == "studio")
 
+        # Reset filter when switching sources
+        self._current_bg_filter = None
+        for btn in self._background_button_group.buttons():
+            btn.setChecked(False)
+
+        self._update_background_selector(source)
         self._apply_source_to_stack(source)
 
-        # 🔑 NEW: if we don't have data yet, request it
         if not self._data_cache.get(source):
             self.rescan_requested.emit()
 
-        # Refresh the newly-visible tree based on active size + cached data
         self._refresh_current_tree()
 
         if emit:
@@ -859,7 +954,5 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         else:
             frame = self._build_single_frame(items[0], first=False)
 
-        # Dashboard rows should be clickable
         frame.setCursor(QtCore.Qt.PointingHandCursor)
-
         return frame
