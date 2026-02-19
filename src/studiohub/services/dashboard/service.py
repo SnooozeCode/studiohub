@@ -114,6 +114,12 @@ class DashboardService:
             monthly=monthly_print_count,
         )
 
+        # Get paper data from paper ledger (CORRECT)
+        paper_data = self._build_paper()  # This uses self._paper_ledger internally
+        
+        # Get ink data from ink builder (CORRECT)
+        ink_data = self._build_ink()      # This uses config + print logs
+        
         return DashboardSnapshot(
             archive=archive,
             studio=studio,
@@ -121,13 +127,14 @@ class DashboardService:
             monthly_print_count=monthly_print_count,
             recent_prints=self._build_recent_prints(),
             monthly_costs=self._build_monthly_costs(),
+            paper=paper_data,   # NOW POPULATED
+            ink=ink_data,       # NOW POPULATED
             revenue=None,
-            notes=None,
+            notes=None
         )
+        
 
-
-
-    # --------------------------------------------------------
+    # ---------------------------------------------------------
     # Index completeness (from poster index state snapshot)
     # --------------------------------------------------------
 
@@ -200,6 +207,7 @@ class DashboardService:
             issues=int(issues),
             missing_files=int(missing_files),
             complete_fraction=float(max(0.0, min(1.0, frac))),
+            total_posters=int(total),  # NOW INCLUDED!
         )
     
     def _build_studio_mood(

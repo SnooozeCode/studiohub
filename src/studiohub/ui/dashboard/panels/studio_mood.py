@@ -1,311 +1,325 @@
+"""
+Studio Mood Panel - Matches first image exactly with:
+- Active time in header (handled by container)
+- Track, Artist, Album in correct order with QSS styling
+- Session time (Morning/Afternoon Session)
+- Current task (Designing/Printing/Standing By)
+- Proper spacing between elements
+- Larger artwork (80x80)
+- NO padding (container handles it)
+"""
+
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Optional
+import psutil
 
-from PySide6 import QtWidgets, QtCore
-from PySide6.QtCore import Qt
-from PySide6.QtGui import QPixmap, QPainter, QFontMetrics, QPalette, QPaintEvent
+from PySide6 import QtCore, QtWidgets, QtGui
+from PySide6.QtCore import Qt, Signal
+from PySide6.QtGui import QPixmap
+from PySide6.QtWidgets import QLabel
 
 from studiohub.style.typography.rules import apply_typography
 
-ART_SIZE = 112
-LINE_SPACING = 6
-
-
-# =====================================================
-# Elided QLabel (PySide6-safe)
-# =====================================================
-
-class ElidedLabel(QtWidgets.QLabel):
-    def __init__(self, text: str = "", parent: Optional[QtWidgets.QWidget] = None):
-        super().__init__("", parent)
-        self._full_text = text or ""
-        self._elide_mode = Qt.ElideRight
-        self.setWordWrap(False)
-        super().setText(self._full_text)
-
-    def setFullText(self, text: str) -> None:
-        self._full_text = text or ""
-        super().setText(self._full_text)
-        self.update()
-        self.updateGeometry()
-
-    def setText(self, text: str) -> None:
-        self.setFullText(text)
-
-    def sizeHint(self):
-        fm = self.fontMetrics()
-        capped = self._full_text[:28] + "…" if len(self._full_text) > 28 else self._full_text
-        return QtCore.QSize(fm.horizontalAdvance(capped) + 2, fm.height() + 2)
-
-    def minimumSizeHint(self):
-        fm = self.fontMetrics()
-        return QtCore.QSize(fm.horizontalAdvance("…") + 2, fm.height() + 2)
-
-    def paintEvent(self, event: QPaintEvent) -> None:
-        painter = QPainter(self)
-        rect = self.contentsRect()
-        if rect.width() <= 0:
-            return
-
-        fm = QFontMetrics(self.font())
-        elided = fm.elidedText(self._full_text, self._elide_mode, rect.width())
-        painter.setPen(self.palette().color(QPalette.WindowText))
-        painter.drawText(rect, int(self.alignment()) | Qt.TextSingleLine, elided)
-
-
-# =====================================================
-# Studio Mood Panel
-# =====================================================
-
 class StudioMoodPanel(QtWidgets.QWidget):
     """
-    Studio Mood Panel (BODY ONLY)
-
-    Header (Active Time) is owned by DashboardViewQt / DashboardCard.
-    This panel emits active_time_changed(text) for header-right updates.
+    Studio Mood panel that matches the first image exactly.
     """
-
-    active_time_changed = QtCore.Signal(str)
-
-    STATUS_UPDATE_MS = 30_000
-    TIME_UPDATE_MS = 60_000  # minute granularity is perfect for "Active"
-
-    def __init__(self, metrics, media_service, parent=None):
+    
+    # Signal emitted when active time changes (for header)
+    active_time_changed = Signal(str)
+    
+    def __init__(self, media_service, print_log_state=None, parent=None):
         super().__init__(parent)
-
-        self.metrics = metrics
-        self.media_service = media_service
-
-        self._app_started_at = datetime.now()
-
+        self.setObjectName("StudioMoodPanel")
+        
+        self._media_service = media_service
+        self._print_log_state = print_log_state
+        self._active_start_time = None
+        self._current_media_active = False
+        
+        # Active time timer (updates every second)
+        self._active_timer = QtCore.QTimer(self)
+        self._active_timer.timeout.connect(self._update_active_time)
+        self._active_timer.setInterval(1000)
+        
+        # Task check timer (checks every 10 seconds)
+        self._task_timer = QtCore.QTimer(self)
+        self._task_timer.timeout.connect(self._update_current_task)
+        self._task_timer.setInterval(10000)
+        
         self._build_ui()
-        self._bind_signals()
-
-        # Prime UI state immediately
-        self._refresh_time_context()
-        self._update_status()
-        self._emit_active_time()
-
-    # =====================================================
-    # UI
-    # =====================================================
-
+        self._connect_signals()
+        
+        # Initial updates
+        self._update_session_time()
+        self._update_current_task()
+        self._task_timer.start()
+        
     def _build_ui(self):
-        root = QtWidgets.QVBoxLayout(self)
-        root.setContentsMargins(0, 0, 0, 0)
-        root.setSpacing(14)
+        """Build the panel UI matching the first image exactly."""
+        # NO PADDING - container handles it
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(16)
 
-        # -------------------------------------------------
-        # Panel description (matches StudioPanel pattern)
-        # -------------------------------------------------
-        self.description = QtWidgets.QLabel(
-            "Current studio vibe and music."
-        )
-        apply_typography(self.description, "caption")
-        self.description.setObjectName("DashboardCardSubtitle")
-        self.description.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        root.addWidget(self.description)
-
-        # ---------- MEDIA ROW ----------
+        # Subtitle
+        subtitle = QLabel("Current studio vibe and music.")
+        subtitle.setObjectName("PanelSubtitle")
+        apply_typography(subtitle, "caption")
+        layout.addWidget(subtitle)
+        
+        # =====================================================
+        # Media row
+        # =====================================================
         media_row = QtWidgets.QHBoxLayout()
+        media_row.setContentsMargins(0, 0, 0, 0)
         media_row.setSpacing(16)
+        
+        # Album artwork - 102x102
+        self.artwork_label = QtWidgets.QLabel()
+        self.artwork_label.setObjectName("StudioMoodArtwork")
+        self.artwork_label.setFixedSize(102, 102)
+        self.artwork_label.setScaledContents(True)
+        
+        # Container for text to allow vertical centering
+        text_container = QtWidgets.QWidget()
+        text_container.setObjectName("StudioMoodTextContainer")
+        text_layout = QtWidgets.QVBoxLayout(text_container)
+        text_layout.setContentsMargins(0, 0, 0, 0)
+        text_layout.setSpacing(4)
+        
+        # Add stretch before and after to center vertically
+        text_layout.addStretch()
+        
+        # Track title (first)
+        self.track_label = QtWidgets.QLabel("")
+        self.track_label.setObjectName("StudioMoodTrack")
+        apply_typography(self.track_label, "body")
+        self.track_label.setWordWrap(True)
+        self.track_label.hide()  # Hide by default
+        text_layout.addWidget(self.track_label)
+        
+        # Artist name (second)
+        self.artist_label = QtWidgets.QLabel("")
+        self.artist_label.setObjectName("StudioMoodArtist")
+        apply_typography(self.artist_label, "body-small")
+        self.artist_label.setWordWrap(True)
+        self.artist_label.hide()
+        text_layout.addWidget(self.artist_label)
+        
+        # Album name (third)
+        self.album_label = QtWidgets.QLabel("")
+        self.album_label.setObjectName("StudioMoodAlbum")
+        apply_typography(self.album_label, "body-small")
+        self.album_label.setWordWrap(True)
+        self.album_label.hide()
+        text_layout.addWidget(self.album_label)
+        
+        # Placeholder when no media
+        self.no_media_label = QtWidgets.QLabel("No media playing")
+        self.no_media_label.setObjectName("StudioMoodNoMedia")
+        self.no_media_label.setWordWrap(True)
+        text_layout.addWidget(self.no_media_label)
+        
+        text_layout.addStretch()
+        
+        media_row.addWidget(self.artwork_label)
+        media_row.addWidget(text_container, 1)  # Give text container stretch
+        media_row.addStretch()
+        
+        layout.addLayout(media_row)
+        
+        # Extra spacing after media section
+        layout.addSpacing(8)
 
-        self.artwork = QtWidgets.QLabel()
-        self.artwork.setFixedSize(ART_SIZE, ART_SIZE)
-        self.artwork.setAlignment(Qt.AlignCenter)
-        self.artwork.setProperty("role", "media-artwork")
-
-        media_text = QtWidgets.QVBoxLayout()
-        media_text.setSpacing(LINE_SPACING)
-        media_text.setAlignment(Qt.AlignVCenter)
-
-        self.lbl_song = ElidedLabel("—")
-        apply_typography(self.lbl_song, "body-small")
-        self.lbl_song.setStyleSheet("font-weight: 600;")
-        self.lbl_song.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
-        self.lbl_song.setSizePolicy(QtWidgets.QSizePolicy.Expanding, QtWidgets.QSizePolicy.Fixed)
-
-        self.lbl_artist = ElidedLabel("")
-        apply_typography(self.lbl_artist, "caption")
-        self.lbl_artist.setProperty("muted", True)
-
-        self.lbl_album = ElidedLabel("")
-        apply_typography(self.lbl_album, "caption")
-        self.lbl_album.setProperty("muted", True)
-
-        media_text.addWidget(self.lbl_song)
-        media_text.addWidget(self.lbl_artist)
-        media_text.addWidget(self.lbl_album)
-
-        media_row.addWidget(self.artwork)
-        media_row.addLayout(media_text)
-        media_row.addStretch(1)
-
-        root.addLayout(media_row)
-
-        # ---------- DIVIDER ----------
+        # =====================================================
+        # Divider
+        # =====================================================
         divider = QtWidgets.QFrame()
-        divider.setFrameShape(QtWidgets.QFrame.HLine)
-        divider.setFrameShadow(QtWidgets.QFrame.Plain)
         divider.setObjectName("StudioMoodDivider")
-        root.addWidget(divider)
+        divider.setFixedHeight(1)
+        layout.addWidget(divider)
+        
+        # =====================================================
+        # Session + Task row (side by side)
+        # =====================================================
+        session_task_row = QtWidgets.QHBoxLayout()
+        session_task_row.setContentsMargins(0, 0, 0, 0)
+        session_task_row.setSpacing(8)
+        
+        # Session time (Morning Session / Afternoon Session)
+        self.session_label = QtWidgets.QLabel("Afternoon Session")
+        apply_typography(self.session_label, "body")
+        self.session_label.setObjectName("StudioMoodSession")
+        
+        # Current task (Designing/Printing/Standing By) - right aligned
+        self.task_label = QtWidgets.QLabel("Designing")
+        apply_typography(self.task_label, "body")
+        self.task_label.setObjectName("StudioMoodTask")
+        self.task_label.setAlignment(Qt.AlignRight)
+        
+        session_task_row.addWidget(self.session_label)
+        session_task_row.addStretch()
+        session_task_row.addWidget(self.task_label)
+        
+        layout.addLayout(session_task_row)
+        
+        # Extra spacing after session row
+        layout.addSpacing(12)
+        layout.addStretch()
 
-        # ---------- SESSION CONTEXT (centered) ----------
-        context_block = QtWidgets.QVBoxLayout()
-        context_block.setSpacing(6)
-        context_block.setAlignment(Qt.AlignHCenter)
-
-        # Weather (muted, smallest)
-        self.lbl_weather = QtWidgets.QLabel("")  # hide when empty
-        apply_typography(self.lbl_weather, "caption")
-        self.lbl_weather.setProperty("muted", True)
-        self.lbl_weather.setAlignment(Qt.AlignHCenter)
-        self.lbl_weather.hide()
-
-        # Session (primary)
-        self.lbl_time_of_day = QtWidgets.QLabel("")
-        apply_typography(self.lbl_time_of_day, "body-small")
-        self.lbl_time_of_day.setStyleSheet("font-weight: 600;")
-        self.lbl_time_of_day.setAlignment(Qt.AlignHCenter)
-
-        # Activity (secondary)
-        self.lbl_activity = QtWidgets.QLabel("")
-        apply_typography(self.lbl_activity, "caption")
-        self.lbl_activity.setProperty("muted", True)
-        self.lbl_activity.setAlignment(Qt.AlignHCenter)
-
-        context_block.addWidget(self.lbl_weather)
-        context_block.addWidget(self.lbl_time_of_day)
-        context_block.addWidget(self.lbl_activity)
-
-        root.addLayout(context_block)
-        root.addStretch(1)
-
-    # =====================================================
-    # Signals / Timers
-    # =====================================================
-
-    def _bind_signals(self):
-        # Media service may be None (lazy init / disabled)
-        if self.media_service is not None and hasattr(self.media_service, "updated"):
-            try:
-                self.media_service.updated.connect(self._update_media)
-            except Exception:
-                pass
-
-        # Status updates (printing/designing/maintenance/standing by)
-        self._status_timer = QtCore.QTimer(self)
-        self._status_timer.timeout.connect(self._update_status)
-        self._status_timer.start(self.STATUS_UPDATE_MS)
-
-        # Time context + active time updates
-        self._time_timer = QtCore.QTimer(self)
-        self._time_timer.timeout.connect(self._on_minute_tick)
-        self._time_timer.start(self.TIME_UPDATE_MS)
-
-    def _on_minute_tick(self):
-        self._refresh_time_context()
-        self._emit_active_time()
-
-    # =====================================================
-    # Updates
-    # =====================================================
-
-    def _refresh_time_context(self):
-        now = datetime.now()
-
-        if 5 <= now.hour < 12:
+    def _connect_signals(self):
+        """Connect to media service signals."""
+        if self._media_service:
+            self._media_service.updated.connect(self._on_media_updated)
+    
+    def _on_media_updated(self, payload: dict):
+        """Handle media updates from the service."""
+        active = payload.get("active", False)
+        artist = payload.get("artist", "")
+        title = payload.get("title", "")
+        album = payload.get("album", "")
+        pixmap = payload.get("pixmap")
+        
+        self._current_media_active = active
+        
+        if active and (title or artist or album):
+            # Hide no media label
+            self.no_media_label.hide()
+            
+            # Show track (first)
+            if title:
+                self.track_label.setText(title)
+                self.track_label.show()
+            else:
+                self.track_label.hide()
+            
+            # Show artist (second)
+            if artist:
+                self.artist_label.setText(artist)
+                self.artist_label.show()
+            else:
+                self.artist_label.hide()
+            
+            # Show album (third)
+            if album:
+                self.album_label.setText(album)
+                self.album_label.show()
+            else:
+                self.album_label.hide()
+            
+            # Start/update active timer
+            if not self._active_start_time:
+                self._active_start_time = datetime.now()
+                self._active_timer.start()
+                self._update_active_time()
+            
+            # Update artwork
+            if pixmap and isinstance(pixmap, QPixmap):
+                # Scale to 102x102
+                scaled = pixmap.scaled(
+                    102, 102,
+                    Qt.KeepAspectRatio,
+                    Qt.SmoothTransformation
+                )
+                self.artwork_label.setPixmap(scaled)
+            else:
+                self.artwork_label.clear()
+        else:
+            # Show no media label
+            self.no_media_label.show()
+            self.track_label.hide()
+            self.artist_label.hide()
+            self.album_label.hide()
+            self.artwork_label.clear()
+            self._active_start_time = None
+            self._active_timer.stop()
+            self.active_time_changed.emit("Active · 0m")
+    
+    def _update_active_time(self):
+        """Update the active time counter for header."""
+        if not self._active_start_time or not self._current_media_active:
+            return
+        
+        elapsed = datetime.now() - self._active_start_time
+        minutes = int(elapsed.total_seconds() // 60)
+        
+        if minutes < 60:
+            time_str = f"Active · {minutes}m"
+        else:
+            hours = minutes // 60
+            mins = minutes % 60
+            time_str = f"Active · {hours}h {mins}m"
+        
+        self.active_time_changed.emit(time_str)
+    
+    def _update_session_time(self):
+        """Update session time based on current hour."""
+        current_hour = datetime.now().hour
+        
+        if 5 <= current_hour < 12:
             session = "Morning Session"
-        elif 12 <= now.hour < 17:
+        elif 12 <= current_hour < 17:
             session = "Afternoon Session"
-        elif 17 <= now.hour < 21:
+        elif 17 <= current_hour < 21:
             session = "Evening Session"
         else:
-            session = "Late Night Session"
-
-        self.lbl_time_of_day.setText(session)
-
-    def _emit_active_time(self):
-        """
-        Emit header-right label text (e.g. "Active · 1:42" or "Active · 18m")
-        """
-        now = datetime.now()
-        elapsed = now - self._app_started_at
-        mins = int(elapsed.total_seconds() // 60)
-        h, m = divmod(mins, 60)
-
-        if h > 0:
-            active = f"{h}:{m:02d}"
+            session = "Night Session"
+        
+        self.session_label.setText(session)
+    
+    def _update_current_task(self):
+        """Update current task and trigger style refresh."""
+        task = self._detect_current_task()
+        self.task_label.setText(task)
+        
+        # Set property for QSS styling
+        if task == "Designing":
+            self.task_label.setProperty("task", "designing")
+        elif task == "Printing":
+            self.task_label.setProperty("task", "printing")
         else:
-            active = f"{m}m"
-
-        self.active_time_changed.emit(f"Active · {active}")
-
-    def _update_media(self, payload: dict):
-        title = payload.get("title") or "—"
-        self.lbl_song.setFullText(title)
-        self.lbl_song.setToolTip(title)
-
-        self.lbl_artist.setFullText(payload.get("artist") or "")
-        self.lbl_album.setFullText(payload.get("album") or "")
-
-        pm = payload.get("pixmap")
-        if isinstance(pm, QPixmap):
-            self.artwork.setPixmap(
-                pm.scaled(
-                    ART_SIZE,
-                    ART_SIZE,
-                    Qt.KeepAspectRatio,
-                    Qt.SmoothTransformation,
-                )
-            )
-
-    def _update_status(self):
-        # Maintenance: printer offline
-        try:
-            if not self.metrics.printer_online():
-                self.lbl_activity.setText("Maintenance")
-                return
-        except Exception:
-            # If printer status can't be checked, don't force "Maintenance"
-            pass
-
-        # Printing: last print within 5 minutes
-        try:
-            last_print = self.metrics.get_last_print_timestamp()
-            if last_print and (datetime.now() - last_print).total_seconds() < 300:
-                self.lbl_activity.setText("Printing")
-                return
-        except Exception:
-            pass
-
-        # Designing: active design app present
-        try:
-            app = self.metrics.get_active_design_app()
-            if app:
-                self.lbl_activity.setText("Designing")
-                return
-        except Exception:
-            pass
-
-        # Default: calm idle state
-        self.lbl_activity.setText("Standing By")
-
-    # =====================================================
-    # Weather (wired-in label; actual fetch comes next)
-    # =====================================================
-
-    def set_weather_text(self, text: str | None) -> None:
+            self.task_label.setProperty("task", "standing")
+        
+        # Force style refresh
+        self.task_label.style().unpolish(self.task_label)
+        self.task_label.style().polish(self.task_label)
+    
+    def _detect_current_task(self) -> str:
         """
-        Set the optional weather line (e.g. "Rainy Morning · 42°F").
-        Pass None/"" to hide.
+        Detect current task:
+        - Photoshop/Illustrator open → "Designing"
+        - Print in last 5 minutes → "Printing"
+        - Otherwise → "Standing By"
         """
-        t = (text or "").strip()
-        if not t:
-            self.lbl_weather.clear()
-            self.lbl_weather.hide()
-            return
-        self.lbl_weather.setText(t)
-        self.lbl_weather.show()
+
+        adobe_apps = ["photoshop.exe", "illustrator.exe"]
+        
+        try:
+            for proc in psutil.process_iter(['name']):
+                proc_name = proc.info['name'].lower() if proc.info['name'] else ""
+                if any(app in proc_name for app in adobe_apps):
+                    return "Designing"
+        except Exception:
+            pass
+        
+        # Check for recent prints
+        if self._print_log_state:
+            try:
+                jobs = getattr(self._print_log_state, "jobs", [])
+                if jobs:
+                    latest = jobs[-1]
+                    if hasattr(latest, 'timestamp') and latest.timestamp:
+                        now = datetime.now()
+                        if hasattr(latest.timestamp, 'tzinfo') and latest.timestamp.tzinfo:
+                            if (now.astimezone() - latest.timestamp).total_seconds() < 300:
+                                return "Printing"
+                        else:
+                            from datetime import timezone
+                            if (now.astimezone(timezone.utc) - latest.timestamp.replace(tzinfo=timezone.utc)).total_seconds() < 300:
+                                return "Printing"
+            except Exception:
+                pass
+        
+        return "Standing By"

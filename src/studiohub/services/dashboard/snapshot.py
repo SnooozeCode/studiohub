@@ -11,11 +11,10 @@ from typing import List, Dict
 
 @dataclass(frozen=True)
 class CompletenessSlice:
-    """Used by ArchiveStatusPanel / StudioPanel."""
     issues: int                  # posters with any missing required files
     missing_files: int           # total missing file count
     complete_fraction: float     # fraction of posters without issues (0..1)
-
+    total_posters: int = 0       # ADD THIS - total number of posters
 
 @dataclass(frozen=True)
 class MonthlyPrintCountSlice:
@@ -84,13 +83,13 @@ class DashboardSnapshot:
     archive: CompletenessSlice
     studio: CompletenessSlice
     studio_mood: StudioMoodSlice
-
     monthly_print_count: MonthlyPrintCountSlice
     recent_prints: list[dict]
-
     monthly_costs: MonthlyCostBreakdown
-
-    # NEW (safe placeholders)
+    
+    # ADD THESE
+    paper: Optional[PaperSlice] = None
+    ink: Optional[InkSlice] = None
+    
     revenue: float | None = None
     notes: str | None = None
-

@@ -1,7 +1,7 @@
 
 /* ============================
-Dashboard Panel Surface
-============================ */
+  Dashboard Panel Surface
+  ============================ */
 
 QFrame#DashboardSurface {
     background-color: __BG_SURFACE__;
@@ -20,74 +20,121 @@ QTextEdit#DashboardNotes {
     color: __TEXT_PRIMARY__;
 }
 
-
 /* Primary KPI / main value */
 QLabel#PanelPrimary {
-    font-size: 28px;
-    font-weight: 600;
-    color: #ffffff;
+    color: __TEXT_PRIMARY__;
 }
 
 /* Secondary supporting values */
 QLabel#PanelSecondary {
-    font-size: 13px;
-    color: #a6accd;
+    color: __TEXT_MUTED__;
 }
 
 /* Meta info (timestamps, labels) */
 QLabel#PanelMeta {
-    font-size: 11px;
-    color: #7f85a3;
+    color: __TEXT_MUTED__;
 }
 
 /* Empty / placeholder state */
 QLabel#PanelPlaceholder {
-    font-size: 13px;
-    color: #6c728c;
-    font-style: italic;
+    color: __TEXT_MUTED__;
 }
 
+/* ============================
+  Action Panel 
+  ============================ */
+
 QWidget#ActionPanel {
-    background-color: #1f2430;
+    background-color: __BG_SURFACE__;
     border-radius: 14px;
 }
 
 QWidget#ActionPanel:hover {
-    background-color: #1f2430;
+    background-color: __BG_SURFACE__;
 }
 
 /* Title */
 QLabel#ActionTitle {
-    font-size: 17px;
-    font-weight: 600;
-    color: #ffffff;
+    color: __TEXT_PRIMARY__;
 }
 
 /* Subtitle */
 QLabel#ActionSubtitle {
-    font-size: 13px;
-    color: #a6accd;
+    color: __TEXT_MUTED__;
     margin-top: 4px;
 }
 
 QWidget#ActionPanelInner {
-    background-color: #1f2430;
+    background-color: __BG_SURFACE__;
     border-radius: 14px;
-    border: 1px solid #2f3550;
 }
 
-QWidget#ActionPanel:hover QWidget#ActionPanelInner {
-    border: 1px solid #3b5cff;
-}
-
-/* Action panel surface — MUST match dashboard cards */
 QWidget#ActionPanelSurface {
-    background-color: #1f2430;   /* same as DashboardCard */
+    background-color: __BG_SURFACE__;
     border-radius: 10px;
-    border: 1px solid #2a2f3a;   /* subtle edge */
 }
 
-/* Hover affordance */
-QWidget#ActionPanel:hover QWidget#ActionPanelSurface {
-    background-color: #232838;
+/* ============================
+  Studio Mood Panel 
+  ============================ */
+
+/* Studio Mood Panel - Text container for vertical centering */
+QWidget#StudioMoodTextContainer {
+    background: transparent;
+}
+
+QLabel#StudioMoodTrack {
+    color: __TEXT_PRIMARY__;
+}
+
+QLabel#StudioMoodArtist {
+    color: __TEXT_PRIMARY__;
+}
+
+QLabel#StudioMoodAlbum {
+    color: __TEXT_MUTED__;
+}
+
+QLabel#StudioMoodNoMedia {
+    font-size: 14px;
+    color: __TEXT_MUTED__;
+}
+
+QLabel#StudioMoodSession {
+    font-size: 13px;
+    font-weight: 500;
+    color: __TEXT_MUTED__;
+}
+
+QLabel#StudioMoodTask {
+    font-size: 13px;
+    font-weight: 600;
+}
+
+QLabel#StudioMoodTask[task="designing"] {
+    color: __ACCENT__;
+}
+
+QLabel#StudioMoodTask[task="printing"] {
+    color: __ACCENT_SECONDARY__;
+}
+
+QLabel#StudioMoodTask[task="standing"] {
+    color: __ACCENT_SECONDARY__;
+}
+
+QFrame#StudioMoodDivider {
+    background-color: rgba(255, 255, 255, 0.1);
+    max-height: 1px;
+    min-height: 1px;
+}
+
+QLabel#StudioMoodActive {
+    font-size: 11px;
+    color: __TEXT_PRIMARY__;
+}
+
+QLabel#StudioMoodActive {
+    font-size: 13px;
+    color: __TEXT_PRIMARY__;
 }

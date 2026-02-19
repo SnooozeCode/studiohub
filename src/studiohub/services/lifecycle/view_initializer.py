@@ -61,9 +61,12 @@ class ViewInitializer:
         # Dashboard (NEW)
         # -----------------------------
 
+        # Dashboard
         view_dashboard = DashboardView(
             dashboard_service=self._deps.dashboard_service,
             notes_store=self._deps.notes_store,
+            media_service=self._deps.media_service,
+            print_log_state=self._deps.print_log_state,
             parent=self._parent,
         )
 

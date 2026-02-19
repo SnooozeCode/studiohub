@@ -45,14 +45,14 @@ class ArchiveVsStudioChart(QtWidgets.QFrame):
         root.setContentsMargins(0, 0, 0, 0)
         root.setSpacing(10)
 
-        # Subtitle
+        # Subtitle - using old styling pattern
         self.subtitle = QtWidgets.QLabel("How many prints from each source.")
         apply_typography(self.subtitle, "caption")
         self.subtitle.setObjectName("DashboardCardSubtitle")
         self.subtitle.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
         root.addWidget(self.subtitle)
 
-        # Rows
+        # Rows - these already match old styling through LedgerBarRow
         self.row_archive = LedgerBarRow(label="ARCHIVE", bar_role="archive")
         self.row_studio  = LedgerBarRow(label="STUDIO",  bar_role="studio")
 
@@ -61,7 +61,7 @@ class ArchiveVsStudioChart(QtWidgets.QFrame):
 
         root.addSpacing(6)
 
-        # Divider (same behavior as Monthly Cost)
+        # Divider - matches old styling exactly
         self.divider = QtWidgets.QFrame()
         self.divider.setObjectName("LedgerDivider")
         self.divider.setFixedHeight(1)
@@ -74,9 +74,8 @@ class ArchiveVsStudioChart(QtWidgets.QFrame):
         root.addSpacing(8)
 
         # -----------------------------
-        # TOTAL PRINTS ROW (ALIGNED)
+        # TOTAL PRINTS ROW - matches old layout constants
         # -----------------------------
-
         total_row = QtWidgets.QHBoxLayout()
         total_row.setContentsMargins(LABEL_INDENT, 0, 0, 0)
 
@@ -100,10 +99,9 @@ class ArchiveVsStudioChart(QtWidgets.QFrame):
         total_row.addWidget(self.total_value)
         total_row.addWidget(self.total_delta)
 
-
         root.addLayout(total_row)
 
-        # Footer
+        # Footer - matches old styling
         self.footer = QtWidgets.QLabel("vs last month")
         apply_typography(self.footer, "small")
         self.footer.setObjectName("LedgerFooter")
@@ -113,7 +111,8 @@ class ArchiveVsStudioChart(QtWidgets.QFrame):
         repolish(self)
 
     # -----------------------------------------------------
-
+    # set_values method - identical to old version with updated param names
+    # -----------------------------------------------------
     def set_values(
         self,
         *,
@@ -140,6 +139,7 @@ class ArchiveVsStudioChart(QtWidgets.QFrame):
 
         self.total_value.setText(str(self._archive + self._studio))
 
+        # Delta arrow styling - matches old version exactly
         arrow = "▴" if self._delta_total >= 0 else "▾"
         self.total_delta.setText(f"{arrow} ({abs(self._delta_total)})")
 

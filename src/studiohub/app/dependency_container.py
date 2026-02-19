@@ -33,6 +33,10 @@ from studiohub.services.print_log_state import PrintLogState
 from studiohub.services.dashboard.service import DashboardService
 from studiohub.services.notifications.notification_service import NotificationService
 
+# ===== NEW: Media services =====
+from studiohub.services.media.service_qt import MediaServiceQt
+# ===============================
+
 # --------------------------------------------------
 # Qt-facing models
 # --------------------------------------------------
@@ -73,6 +77,10 @@ class Dependencies:
     dashboard_service: DashboardService
     notification_service: NotificationService
     notes_store: DashboardNotesStore
+    
+    # ===== NEW: Media service =====
+    media_service: MediaServiceQt
+    # ===============================
 
     # -----------------------------
     # Qt models
@@ -155,6 +163,13 @@ class DependencyContainer:
         )
 
         notification_service = NotificationService()
+        
+        # ===== NEW: Media service =====
+        media_service = MediaServiceQt(
+            config=config_manager,
+            parent=parent
+        )
+        # ===============================
 
         # --------------------------------------------------
         # Qt-facing models
@@ -198,6 +213,7 @@ class DependencyContainer:
             dashboard_service=dashboard_service,
             notes_store=notes_store,
             notification_service=notification_service,
+            media_service=media_service,  # NEW
             missing_model=missing_model,
             print_manager_model=print_manager_model,
             mockup_model=mockup_model,
