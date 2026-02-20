@@ -249,13 +249,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._on_replace_paper_requested
             )
 
-        dashboard.open_print_log_requested.connect(
-            lambda: self._navigation.show_view("print_jobs")
-        )
-        
-        dashboard.new_print_job_panel.triggered.connect(
-            lambda: self._navigation.show_view("print_manager")
-        )
+            # FIXED: Use the correct signals from DashboardView
+            dashboard.new_print_job_requested.connect(
+                lambda: self._navigation.show_view("print_manager")
+            )
+            dashboard.open_print_log_requested.connect(
+                lambda: self._navigation.show_view("print_jobs")
+            )
 
         # Index manager signals
         self._index_manager.index_started.connect(self._on_index_started)
@@ -270,36 +270,24 @@ class MainWindow(QtWidgets.QMainWindow):
         model = self._deps.print_manager_model
 
         if print_view:
-            # model → view (already partially present)
             model.scan_finished.connect(print_view.set_data)
             model.queue_changed.connect(print_view.set_queue)
             model.last_batch_changed.connect(print_view.set_reprint_available)
-
-            # 🔑 view → model (THIS WAS MISSING)
             print_view.queue_add_requested.connect(model.add_to_queue)
             print_view.queue_remove_requested.connect(model.remove_from_queue)
             print_view.queue_clear_requested.connect(model.clear_queue)
             print_view.send_requested.connect(model.send)
             print_view.reprint_requested.connect(model.reprint_last_batch)
 
-
-        
-        # Missing files wiring (model -> view, view -> model)
+        # Missing files wiring
         missing_view = self._navigation.get_view("missing_files")
         if missing_view:
             mm = self._deps.missing_model
-
-            # view -> model
             missing_view.refresh_requested.connect(mm.refresh)
-
-            # model -> view
             mm.scan_started.connect(lambda src: missing_view.set_loading(src, "Scanning..."))
             mm.scan_finished.connect(missing_view.set_data)
             mm.scan_error.connect(missing_view.set_error)
-
-            # theme changes
             self.theme_changed.connect(missing_view.on_theme_changed)
-
     
     def _finalize_startup(self) -> None:
         """Complete application startup."""

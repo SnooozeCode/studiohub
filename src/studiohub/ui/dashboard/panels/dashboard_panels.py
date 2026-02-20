@@ -87,12 +87,11 @@ class BaseActionPanel(QWidget):
         self.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Expanding)
 
         outer = QVBoxLayout(self)
-        outer.setContentsMargins(0, 0, 0, 0)  # NO PADDING
+        outer.setContentsMargins(0, 0, 0, 0)
 
         self._surface = DashboardSurface(self)
         self._surface.setProperty("role", "panel")
 
-        # DashboardSurface already has its own padding (12px)
         surface_layout = self._surface.layout()
         surface_layout.setSpacing(6)
 
@@ -114,6 +113,12 @@ class BaseActionPanel(QWidget):
         surface_layout.addStretch()
 
         outer.addWidget(self._surface)
+
+    def mousePressEvent(self, event):
+        """Handle mouse press to emit triggered signal."""
+        self.triggered.emit()
+        super().mousePressEvent(event)
+    # ===================================
 
 # ==================================================
 # Content Health Panel
@@ -356,7 +361,9 @@ class OpenPrintLogPanel(BaseActionPanel):
             parent=parent,
         )
 
-
+# ==================================================
+# Monthly Print Counts Panel
+# ==================================================
 class MonthlyPrintCountsPanel(QWidget):
     """
     Archive vs Studio panel with colored progress bars and deltas.
