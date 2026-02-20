@@ -1,7 +1,8 @@
+/* Dashboard QSS */
 
-/* ============================
-  Dashboard Panel Surface
-  ============================ */
+/* ==============================================
+  Base Panel 
+  ============================================ */
 
 QFrame#DashboardSurface {
     background-color: __BG_SURFACE__;
@@ -13,6 +14,16 @@ QLabel#DashboardCardTitle {
     letter-spacing: 0.8px;
     color: __TEXT_PRIMARY__;
 }
+
+QLabel#DashboardSubtitle {
+    color: __TEXT_MUTED__;
+    min-height: 14px;
+    max-height: 14px;
+    line-height: 14px;
+    margin: 0;
+    padding: 0;
+}
+
 
 QTextEdit#DashboardNotes {
     background-color: __BG_SURFACE__;
@@ -40,9 +51,10 @@ QLabel#PanelPlaceholder {
     color: __TEXT_MUTED__;
 }
 
-/* ============================
+
+/* ==============================================
   Action Panel 
-  ============================ */
+  ============================================ */
 
 QWidget#ActionPanel {
     background-color: __BG_SURFACE__;
@@ -74,9 +86,10 @@ QWidget#ActionPanelSurface {
     border-radius: 10px;
 }
 
-/* ============================
-  Studio Mood Panel 
-  ============================ */
+
+/* ==============================================
+   Studio Mood Panel 
+   =========================================== */
 
 /* Studio Mood Panel - Text container for vertical centering */
 QWidget#StudioMoodTextContainer {
@@ -132,4 +145,123 @@ QFrame#StudioMoodDivider {
 QLabel#StudioMoodActive {
     font-size: 13px;
     color: __TEXT_PRIMARY__;
+}
+
+
+/* ==============================================
+   Monthly Cost Panel
+   =========================================== */
+
+QFrame#CostIndicator {
+    border-radius: 3px;
+    min-width: 6px;
+    max-width: 6px;
+    min-height: 20px;
+    max-height: 20px;
+}
+
+QFrame#CostIndicator[costType="paper"] {
+    background-color: __ACCENT__;
+}
+
+QFrame#CostIndicator[costType="ink"] {
+    background-color: __ACCENT_SECONDARY__;
+}
+
+QFrame#CostIndicator[costType="shipping"] {
+    background-color: __ACCENT_TERTIARY__;
+}
+
+QLabel#CostLabel {
+    color: __TEXT_PRIMARY__;
+}
+
+QLabel#CostValue {
+    color: __TEXT_PRIMARY__;
+}
+
+QLabel#TotalLabel {
+    color: __TEXT_PRIMARY__;
+}
+
+QLabel#TotalValue {
+    color: __TEXT_PRIMARY__;
+}
+
+QFrame#CostDivider {
+    background-color: rgba(255, 255, 255, 0.1);
+    max-height: 1px;
+    min-height: 1px;
+    margin: 4px 0;
+}
+
+
+/* ==============================================
+   Monthly Print Counts Panel
+   =========================================== */
+
+/* Progress Bars */
+QProgressBar#PrintCountProgress_archive,
+QProgressBar#PrintCountProgress_studio {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: none;
+    min-height: 32px;
+    max-height: 32px;
+    height: 32px;
+}
+
+QProgressBar#PrintCountProgress_archive::chunk,
+QProgressBar#PrintCountProgress_studio::chunk {
+    border-top-left-radius: 4px;
+    border-bottom-left-radius: 4px;
+    border-top-right-radius: 0px;
+    border-bottom-right-radius: 0px;
+}
+
+QProgressBar#PrintCountProgress_archive::chunk {
+    background-color: __ACCENT__;
+}
+
+QProgressBar#PrintCountProgress_studio::chunk {
+    background-color: __ACCENT_SECONDARY__;
+}
+
+/* Add border-radius to the whole progress bar instead */
+QProgressBar#PrintCountProgress_archive,
+QProgressBar#PrintCountProgress_studio {
+    border-radius: 4px;
+}
+
+/* Label styling */
+QLabel#printCountBarLabel {
+    color: __TEXT_PRIMARY__;
+    background: transparent;
+}
+
+QLabel#printCountBarValue {
+    color: __TEXT_PRIMARY__;
+    background: transparent;
+}
+
+QLabel#printCountBarDelta {
+    color: __TEXT_MUTED__;
+    background: transparent;
+}
+
+/* Container for overlay */
+QWidget#printCountBar_archive,
+QWidget#printCountBar_studio {
+    background: transparent;
+    min-height: 32px;
+    max-height: 32px;
+}
+
+/* Ensure label container is transparent */
+QWidget#printCountBar_archive > QWidget,
+QWidget#printCountBar_studio > QWidget {
+    background: transparent;
+}
+
+QFrame#CountsDivider {
+    background: __TEXT_MUTED__;
 }

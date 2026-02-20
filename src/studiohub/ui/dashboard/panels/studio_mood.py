@@ -65,8 +65,10 @@ class StudioMoodPanel(QtWidgets.QWidget):
 
         # Subtitle
         subtitle = QLabel("Current studio vibe and music.")
-        subtitle.setObjectName("PanelSubtitle")
+        subtitle.setObjectName("DashboardSubtitle")
         apply_typography(subtitle, "caption")
+        subtitle.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        subtitle.setFixedHeight(14)
         layout.addWidget(subtitle)
         
         # =====================================================

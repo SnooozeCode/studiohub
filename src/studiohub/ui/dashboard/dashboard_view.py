@@ -7,7 +7,7 @@ from PySide6.QtCore import Signal, Qt
 from studiohub.services.dashboard.service import DashboardService
 from studiohub.ui.dashboard.dashboard_container import DashboardContainer
 from studiohub.services.dashboard.notes_store import DashboardNotesStore
-from studiohub.services.media.service_qt import MediaServiceQt  # NEW
+from studiohub.services.media.service_qt import MediaServiceQt
 from studiohub.ui.dashboard.panels.dashboard_panels import (
     ContentHealthPanel,
     PrintReadinessPanel,
@@ -49,6 +49,9 @@ class DashboardView(QWidget):
         self._media_service = media_service
         self._print_log_state = print_log_state
 
+        # Theme tokens (will be set later)
+        self._theme_tokens = {}
+
         # =====================================================
         # UI Construction
         # =====================================================
@@ -57,13 +60,12 @@ class DashboardView(QWidget):
         self.content_health_panel = ContentHealthPanel()
         self.print_readiness_panel = PrintReadinessPanel()
         
-        # ===== FIXED: Create Studio Mood panel with media service =====
-        # We'll create it later after we have the container
+        # ===== Studio Mood placeholder =====
         self._studio_mood_placeholder = QLabel("Loading media...")
         self._studio_mood_placeholder.setAlignment(Qt.AlignCenter)
         self._studio_mood_placeholder.setObjectName("DashboardPlaceholder")
-        self.studio_mood_panel = self._studio_mood_placeholder  # Placeholder for now
-        # =============================================================
+        self.studio_mood_panel = self._studio_mood_placeholder
+        # ===================================
 
         # Row 2 — operations
         self.new_print_job_panel = NewPrintJobPanel()
@@ -98,10 +100,9 @@ class DashboardView(QWidget):
             DashboardContainer("Print Readiness", self.print_readiness_panel), 0, 1
         )
         
-        # ===== FIXED: Studio Mood container with active time header =====
+        # Studio Mood container with active time header
         self.studio_mood_container = DashboardContainer("Studio Mood", self.studio_mood_panel)
         
-        # Add active time label to header
         self.studio_mood_active_lbl = QLabel("Active · 0m")
         apply_typography(self.studio_mood_active_lbl, "small")
         self.studio_mood_active_lbl.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
@@ -109,7 +110,6 @@ class DashboardView(QWidget):
         self.studio_mood_container.set_header_widget(self.studio_mood_active_lbl)
         
         grid.addWidget(self.studio_mood_container, 0, 2)
-        # =============================================================
 
         # Row 2 — actions
         grid.addWidget(self.new_print_job_panel, 1, 0)
@@ -122,10 +122,10 @@ class DashboardView(QWidget):
 
         # Row 3
         grid.addWidget(
-            DashboardContainer("Monthly Costs", self.monthly_cost_panel), 2, 0
+            DashboardContainer("Monthly Production Costs", self.monthly_cost_panel), 2, 0
         )
         grid.addWidget(
-            DashboardContainer("Revenue", self.revenue_panel), 2, 1
+            DashboardContainer("Monthly Revenue", self.revenue_panel), 2, 1
         )
         grid.addWidget(
             DashboardContainer("Notes", self.notes_panel), 2, 2
@@ -139,9 +139,8 @@ class DashboardView(QWidget):
         grid.setColumnStretch(1, 1)
         grid.setColumnStretch(2, 1)
 
-        # ===== NEW: Create actual Studio Mood panel after UI is built =====
+        # Initialize panels after UI is built
         QtCore.QTimer.singleShot(0, self._init_studio_mood_panel)
-        # =================================================================
 
         # Initial data load
         self.refresh()
@@ -151,34 +150,36 @@ class DashboardView(QWidget):
         if saved_html:
             self.notes_panel.set_data(saved_html)
 
+    def set_theme_tokens(self, tokens: dict):
+        """Set theme tokens and update panels that need them."""
+        self._theme_tokens = tokens
+        
+        # Pass tokens to panels that need them
+        if hasattr(self.monthly_print_counts_panel, 'set_theme_tokens'):
+            self.monthly_print_counts_panel.set_theme_tokens(tokens)
+
     def _init_studio_mood_panel(self):
         """Create and initialize the real Studio Mood panel."""
         try:
             from studiohub.ui.dashboard.panels.studio_mood import StudioMoodPanel
             
-            # Create the REAL panel with print_log_state
             real_panel = StudioMoodPanel(
                 media_service=self._media_service,
-                print_log_state=self._print_log_state,  # PASS IT HERE
+                print_log_state=self._print_log_state,
                 parent=self.studio_mood_container
             )
             
-            # Connect active time signal to header
             real_panel.active_time_changed.connect(
                 self.studio_mood_active_lbl.setText
             )
             
-            # Replace placeholder in container
             self.studio_mood_container.replace_content(real_panel)
-            
-            # Store reference
             self.studio_mood_panel = real_panel
             
         except Exception as e:
             print(f"[Dashboard] Failed to initialize Studio Mood panel: {e}")
             import traceback
             traceback.print_exc()
-
 
     def refresh(self) -> None:
         """Refresh all panels with latest data."""
@@ -189,7 +190,6 @@ class DashboardView(QWidget):
         
         if snapshot.paper and snapshot.ink:
             self.print_readiness_panel.set_data(snapshot.paper, snapshot.ink)
-        
 
         # Row 2
         self.monthly_print_counts_panel.set_data(snapshot.monthly_print_count)

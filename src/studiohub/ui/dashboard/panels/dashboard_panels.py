@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from PySide6.QtGui import QTextCursor, QTextCharFormat, QFont, QAction
+from PySide6.QtGui import QTextCursor, QTextCharFormat, QFont, QAction, QPainter, QColor
 from PySide6.QtCore import QSettings, QTimer, QSize, Qt, Signal
 from PySide6.QtWidgets import (
     QWidget,
     QLabel,
     QVBoxLayout,
     QHBoxLayout,
+    QGridLayout,
     QListWidget,
     QListWidgetItem,
     QSizePolicy,
@@ -356,12 +357,10 @@ class OpenPrintLogPanel(BaseActionPanel):
         )
 
 
-# ==================================================
-# Monthly Print Counts Panel 
-# ==================================================
 class MonthlyPrintCountsPanel(QWidget):
     """
-    Archive vs Studio panel.
+    Archive vs Studio panel with colored progress bars and deltas.
+    Consistent spacing throughout.
     """
 
     def __init__(self, parent=None):
@@ -369,126 +368,199 @@ class MonthlyPrintCountsPanel(QWidget):
         self.setObjectName("MonthlyPrintCountsPanel")
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)  # NO PADDING
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
         # Subtitle
         subtitle = QLabel("How many prints from each source.")
-        subtitle.setObjectName("PanelSubtitle")
+        subtitle.setObjectName("DashboardSubtitle")
         apply_typography(subtitle, "caption")
+        subtitle.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        subtitle.setFixedHeight(14)
         layout.addWidget(subtitle)
 
+        # Spacing below subtitle
+        layout.addSpacing(8)
+
         # Archive row
-        archive_row = QHBoxLayout()
-        archive_row.setContentsMargins(0, 0, 0, 0)
-        self.archive_label = QLabel("ARCHIVE")
-        apply_typography(self.archive_label, "body")
-        self.archive_label.setObjectName("CountLabel")
-        
-        self.archive_value = QLabel("0")
-        apply_typography(self.archive_value, "body")
-        self.archive_value.setObjectName("CountValue")
-        self.archive_value.setAlignment(Qt.AlignRight)
+        self.archive_bar = PrintCountBar("ARCHIVE", "archive")
+        layout.addWidget(self.archive_bar)
 
-        archive_row.addWidget(self.archive_label)
-        archive_row.addStretch()
-        archive_row.addWidget(self.archive_value)
-        layout.addLayout(archive_row)
-
-        # Archive progress bar
-        self.archive_progress = QProgressBar()
-        self.archive_progress.setObjectName("ArchiveProgress")
-        self.archive_progress.setRange(0, 100)
-        self.archive_progress.setValue(0)
-        self.archive_progress.setTextVisible(False)
-        self.archive_progress.setFixedHeight(20)
-        layout.addWidget(self.archive_progress)
+        # Spacing between progress bars
+        layout.addSpacing(4)
 
         # Studio row
-        studio_row = QHBoxLayout()
-        studio_row.setContentsMargins(0, 0, 0, 0)
+        self.studio_bar = PrintCountBar("STUDIO", "studio")
+        layout.addWidget(self.studio_bar)
 
-        self.studio_label = QLabel("STUDIO")
-        apply_typography(self.studio_label, "body")
-        self.studio_label.setObjectName("CountLabel")
-
-        self.studio_value = QLabel("0")
-        apply_typography(self.studio_value, "body")
-        self.studio_value.setObjectName("CountValue")
-        self.studio_value.setAlignment(Qt.AlignRight)
-
-        studio_row.addWidget(self.studio_label)
-        studio_row.addStretch()
-        studio_row.addWidget(self.studio_value)
-        layout.addLayout(studio_row)
-
-        # Studio progress bar
-        self.studio_progress = QProgressBar()
-        self.studio_progress.setObjectName("StudioProgress")
-        self.studio_progress.setRange(0, 100)
-        self.studio_progress.setValue(0)
-        self.studio_progress.setTextVisible(False)
-        self.studio_progress.setFixedHeight(20)
-        layout.addWidget(self.studio_progress)
+        # Spacing above divider
+        layout.addSpacing(8)
 
         # Divider
         divider = QFrame()
         divider.setObjectName("CountsDivider")
         divider.setFixedHeight(1)
-        divider.setStyleSheet("background-color: rgba(255,255,255,0.1);")
+        divider.setStyleSheet("background-color: rgba(255,255,255,0.05);")
         layout.addWidget(divider)
 
+        # Spacing below divider
+        layout.addSpacing(8)
+
         # Total row
-        total_row = QHBoxLayout()
-        total_row.setContentsMargins(0, 0, 0, 0)
+        total_row = QWidget()
+        total_row.setObjectName("TotalRow")
+        total_row.setFixedHeight(24)  # Slightly shorter than progress bars
+        total_layout = QHBoxLayout(total_row)
+        total_layout.setContentsMargins(8, 0, 8, 0)
+        total_layout.setSpacing(4)
 
         self.total_label = QLabel("TOTAL PRINTS")
         apply_typography(self.total_label, "body")
         self.total_label.setObjectName("TotalLabel")
+        self.total_label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        self.total_label.setFixedHeight(24)
+
+        total_layout.addWidget(self.total_label)
+        total_layout.addStretch()
 
         self.total_value = QLabel("0")
         apply_typography(self.total_value, "body")
         self.total_value.setObjectName("TotalValue")
-        self.total_value.setAlignment(Qt.AlignRight)
+        self.total_value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        self.total_value.setFixedHeight(24)
+        total_layout.addWidget(self.total_value)
 
-        total_row.addWidget(self.total_label)
-        total_row.addStretch()
-        total_row.addWidget(self.total_value)
-        layout.addLayout(total_row)
+        layout.addWidget(total_row)
 
-        # Footer
+        # Spacing above footer
+        layout.addSpacing(4)
+
+        # Footer - aligned right
         self.footer = QLabel("vs last month")
         self.footer.setObjectName("CountsFooter")
-        self.footer.setAlignment(Qt.AlignRight)
+        self.footer.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         apply_typography(self.footer, "small")
+        self.footer.setFixedHeight(16)
         layout.addWidget(self.footer)
+
+        # No stretch at the bottom - let it be natural
 
     def set_data(self, data: MonthlyPrintCountSlice) -> None:
         total = data.archive_this_month + data.studio_this_month
         
-        self.archive_value.setText(str(data.archive_this_month))
-        self.studio_value.setText(str(data.studio_this_month))
+        self.archive_bar.set_values(
+            data.archive_this_month, 
+            data.delta_archive,
+            total
+        )
+        self.studio_bar.set_values(
+            data.studio_this_month, 
+            data.delta_studio,
+            total
+        )
         
-        if total > 0:
-            archive_pct = int((data.archive_this_month / total) * 100)
-            studio_pct = int((data.studio_this_month / total) * 100)
-            self.archive_progress.setValue(archive_pct)
-            self.studio_progress.setValue(studio_pct)
-        
-        # Show delta if available
+        # Format total with delta
         if data.delta_total != 0:
-            delta_text = f"({data.delta_total:+d})"
-            self.total_value.setText(f"{total} {delta_text}")
+            delta_sign = "+" if data.delta_total > 0 else ""
+            self.total_value.setText(f"{total} ({delta_sign}{data.delta_total})")
         else:
             self.total_value.setText(str(total))
 
+class PrintCountBar(QWidget):
+    """
+    Progress bar with integrated label and delta.
+    Uses QProgressBar with stacked labels on top.
+    """
+
+    def __init__(self, label: str, bar_type: str, parent=None):
+        super().__init__(parent)
+        self.setObjectName(f"PrintCountBar_{bar_type}")
+        self.setFixedHeight(32)
+        
+        self._bar_type = bar_type
+        self._percentage = 0
+        
+        # Main layout
+        layout = QHBoxLayout(self)
+        layout.setContentsMargins(0, 0, 0, 0)
+        layout.setSpacing(0)
+
+        # Progress bar - ensure it fills the entire height
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setObjectName(f"PrintCountProgress_{bar_type}")
+        self.progress_bar.setRange(0, 100)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setFixedHeight(32)
+        self.progress_bar.setSizePolicy(QSizePolicy.Expanding, QSizePolicy.Fixed)
+        
+        # Create a container for labels that sits on top
+        self.label_container = QWidget(self.progress_bar)
+        self.label_container.setGeometry(0, 0, self.progress_bar.width(), 32)
+        self.label_container.setAttribute(Qt.WA_TranslucentBackground)
+        
+        # Use QVBoxLayout with center alignment
+        container_layout = QVBoxLayout(self.label_container)
+        container_layout.setContentsMargins(8, 0, 8, 0)
+        container_layout.setAlignment(Qt.AlignCenter)
+        
+        # Horizontal layout for the actual content
+        content_layout = QHBoxLayout()
+        content_layout.setContentsMargins(0, 0, 0, 0)
+        content_layout.setSpacing(4)
+
+        # Label (left side)
+        self.label = QLabel(label)
+        apply_typography(self.label, "body")
+        self.label.setObjectName("PrintCountBarLabel")
+        self.label.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        content_layout.addWidget(self.label)
+
+        content_layout.addStretch()
+
+        # Value
+        self.value_label = QLabel("0")
+        apply_typography(self.value_label, "body")
+        self.value_label.setObjectName("PrintCountBarValue")
+        self.value_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        content_layout.addWidget(self.value_label)
+
+        # Delta
+        self.delta_label = QLabel("")
+        apply_typography(self.delta_label, "body")
+        self.delta_label.setObjectName("PrintCountBarDelta")
+        self.delta_label.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
+        content_layout.addWidget(self.delta_label)
+
+        container_layout.addLayout(content_layout)
+        layout.addWidget(self.progress_bar)
+
+    def resizeEvent(self, event):
+        """Update label container geometry when widget is resized."""
+        super().resizeEvent(event)
+        self.label_container.setGeometry(0, 0, self.progress_bar.width(), 32)
+
+    def set_values(self, value: int, delta: int, total: int):
+        """Set the current value, delta, and total for scaling."""
+        self._percentage = int((value / max(total, 1)) * 100)
+        self.progress_bar.setValue(self._percentage)
+        
+        # Update text
+        self.value_label.setText(str(value))
+        
+        if delta != 0:
+            delta_sign = "+" if delta > 0 else ""
+            self.delta_label.setText(f"({delta_sign}{delta})")
+        else:
+            self.delta_label.setText("")
 
 # ==================================================
-# Monthly Cost Panel
+# Monthly Cost Panel - WITH COLORED INDICATORS
 # ==================================================
 class MonthlyCostPanel(QWidget):
     """
-    Monthly Production Cost panel.
+    Monthly Production Cost panel with colored indicators.
+    Matches the screenshot with colored markers for each row.
     """
 
     def __init__(self, parent=None):
@@ -496,64 +568,96 @@ class MonthlyCostPanel(QWidget):
         self.setObjectName("MonthlyCostPanel")
 
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)  # NO PADDING
+        layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(8)
 
         # Subtitle
         subtitle = QLabel("Production cost across all prints.")
-        subtitle.setObjectName("PanelSubtitle")
+        subtitle.setObjectName("DashboardSubtitle")
         apply_typography(subtitle, "caption")
+        subtitle.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)
+        subtitle.setFixedHeight(14)
         layout.addWidget(subtitle)
 
-        # Paper row
+        # Paper row with colored indicator
         paper_row = QHBoxLayout()
         paper_row.setContentsMargins(0, 0, 0, 0)
+        paper_row.setSpacing(8)
+
+        # Colored indicator for Paper
+        paper_indicator = QFrame()
+        paper_indicator.setObjectName("CostIndicator")
+        paper_indicator.setProperty("costType", "paper")
+        paper_indicator.setFixedSize(12, 12)
+        paper_indicator.setFrameShape(QFrame.NoFrame)
 
         paper_label = QLabel("Paper")
         apply_typography(paper_label, "body")
         paper_label.setObjectName("CostLabel")
+        paper_label.setAlignment(Qt.AlignVCenter)
 
         self.paper_value = QLabel("$0.00")
         apply_typography(self.paper_value, "body")
         self.paper_value.setObjectName("CostValue")
-        self.paper_value.setAlignment(Qt.AlignRight)
+        self.paper_value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
+        paper_row.addWidget(paper_indicator)
         paper_row.addWidget(paper_label)
         paper_row.addStretch()
         paper_row.addWidget(self.paper_value)
         layout.addLayout(paper_row)
 
-        # Ink row
+        # Ink row with colored indicator
         ink_row = QHBoxLayout()
         ink_row.setContentsMargins(0, 0, 0, 0)
+        ink_row.setSpacing(8)
+
+        # Colored indicator for Ink
+        ink_indicator = QFrame()
+        ink_indicator.setObjectName("CostIndicator")
+        ink_indicator.setProperty("costType", "ink")
+        ink_indicator.setFixedSize(12, 12)
+        ink_indicator.setFrameShape(QFrame.NoFrame)
 
         ink_label = QLabel("Ink")
         apply_typography(ink_label, "body")
         ink_label.setObjectName("CostLabel")
+        ink_label.setAlignment(Qt.AlignVCenter)
 
         self.ink_value = QLabel("$0.00")
         apply_typography(self.ink_value, "body")
         self.ink_value.setObjectName("CostValue")
-        self.ink_value.setAlignment(Qt.AlignRight)
+        self.ink_value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
+        ink_row.addWidget(ink_indicator)
         ink_row.addWidget(ink_label)
         ink_row.addStretch()
         ink_row.addWidget(self.ink_value)
         layout.addLayout(ink_row)
 
-        # Shipping row
+        # Shipping row with colored indicator
         shipping_row = QHBoxLayout()
         shipping_row.setContentsMargins(0, 0, 0, 0)
+        shipping_row.setSpacing(8)
+
+        # Colored indicator for Shipping
+        shipping_indicator = QFrame()
+        shipping_indicator.setObjectName("CostIndicator")
+        shipping_indicator.setProperty("costType", "shipping")
+        shipping_indicator.setFixedSize(12, 12)
+        shipping_indicator.setFrameShape(QFrame.NoFrame)
 
         shipping_label = QLabel("Shipping Supplies")
         apply_typography(shipping_label, "body")
         shipping_label.setObjectName("CostLabel")
+        shipping_label.setAlignment(Qt.AlignVCenter)
 
         self.shipping_value = QLabel("$0.00")
         apply_typography(self.shipping_value, "body")
         self.shipping_value.setObjectName("CostValue")
-        self.shipping_value.setAlignment(Qt.AlignRight)
+        self.shipping_value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
 
+        shipping_row.addWidget(shipping_indicator)
         shipping_row.addWidget(shipping_label)
         shipping_row.addStretch()
         shipping_row.addWidget(self.shipping_value)
@@ -563,7 +667,6 @@ class MonthlyCostPanel(QWidget):
         divider = QFrame()
         divider.setObjectName("CostDivider")
         divider.setFixedHeight(1)
-        divider.setStyleSheet("background-color: rgba(255,255,255,0.1);")
         layout.addWidget(divider)
 
         # Total row
@@ -573,12 +676,13 @@ class MonthlyCostPanel(QWidget):
         total_label = QLabel("TOTAL")
         apply_typography(total_label, "body")
         total_label.setObjectName("TotalLabel")
+        total_label.setAlignment(Qt.AlignVCenter)
         total_label.setStyleSheet("font-weight: bold;")
 
         self.total_value = QLabel("$0.00")
         apply_typography(self.total_value, "body")
         self.total_value.setObjectName("TotalValue")
-        self.total_value.setAlignment(Qt.AlignRight)
+        self.total_value.setAlignment(Qt.AlignRight | Qt.AlignVCenter)
         self.total_value.setStyleSheet("font-weight: bold;")
 
         total_row.addWidget(total_label)
@@ -591,7 +695,6 @@ class MonthlyCostPanel(QWidget):
         self.ink_value.setText(f"${data.ink:.2f}")
         self.shipping_value.setText(f"${data.shipping_supplies:.2f}")
         self.total_value.setText(f"${data.total:.2f}")
-
 
 # ==================================================
 # Revenue Panel

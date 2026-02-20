@@ -120,7 +120,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Apply theme
         self.apply_theme()
-    
+        
     def _create_sidebar(self) -> Sidebar:
         """Create and configure sidebar."""
         sidebar = Sidebar(width=UIConstants.SIDEBAR_WIDTH)
@@ -328,6 +328,9 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Show dashboard
         QtCore.QTimer.singleShot(0, lambda: self._navigation.show_view("dashboard"))
+        
+        # Set initial theme tokens for dashboard
+        QtCore.QTimer.singleShot(100, self._update_dashboard_theme)  # Small delay to ensure dashboard is ready
 
     
     def _on_setup_incomplete(self, missing: list[str]) -> None:
@@ -347,13 +350,26 @@ class MainWindow(QtWidgets.QMainWindow):
     # Theme Management
     # --------------------------------------------------
     
+    # Add this new method to MainWindow
+    def _update_dashboard_theme(self):
+        """Update dashboard with current theme tokens."""
+        dashboard = self._navigation.get_view("dashboard")
+        if dashboard and hasattr(dashboard, 'set_theme_tokens'):
+            tokens = self._get_theme_tokens()
+            dashboard.set_theme_tokens(tokens)
+
+    # Update apply_theme method
     def apply_theme(self) -> None:
         """Apply current theme to application."""
         app = QtWidgets.QApplication.instance()
         if app is None:
             return
         apply_app_theme(app, theme_name=self._theme_name, root=self)
-    
+        
+        # Update dashboard with new theme tokens
+        self._update_dashboard_theme()
+
+    # Update toggle_theme method
     def toggle_theme(self) -> None:
         """Toggle between light and dark themes."""
         self._theme_name = (
@@ -367,8 +383,8 @@ class MainWindow(QtWidgets.QMainWindow):
         
         label = "Dracula" if self._theme_name == "dracula" else "Alucard"
         self.set_status(f"Theme switched to {label}", 
-                       decay_ms=UIConstants.STATUS_DECAY_MS)
-    
+                    decay_ms=UIConstants.STATUS_DECAY_MS)
+        
     # --------------------------------------------------
     # Status Bar
     # --------------------------------------------------

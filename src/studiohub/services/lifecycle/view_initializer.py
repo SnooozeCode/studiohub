@@ -69,6 +69,8 @@ class ViewInitializer:
             print_log_state=self._deps.print_log_state,
             parent=self._parent,
         )
+        
+        self._dashboard_view = view_dashboard
 
         # -----------------------------
         # Print Manager
