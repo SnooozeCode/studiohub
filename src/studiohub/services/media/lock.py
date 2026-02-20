@@ -6,7 +6,6 @@ from pathlib import Path
 # Windows-only, intentional
 import msvcrt
 
-
 class MediaWorkerLock:
     """
     OS-level singleton lock for MediaWorker.

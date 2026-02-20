@@ -9,18 +9,18 @@ from pathlib import Path
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtCore import Qt
 
-from studiohub.constants import UIConstants, APP_VERSION
 from studiohub.app.dependency_container import DependencyContainer, Dependencies
+from studiohub.constants import UIConstants, APP_VERSION
 from studiohub.services.navigation.navigation_service import NavigationService
 from studiohub.services.index.index_manager import IndexManager
 from studiohub.services.lifecycle.startup_manager import StartupManager
 from studiohub.services.lifecycle.view_initializer import ViewInitializer
+from studiohub.services.media.runner import start_media_worker
+from studiohub.style import apply_style as apply_app_theme
+from studiohub.style.typography.rules import apply_typography
 from studiohub.ui.widgets.notifications_drawer import NotificationsDrawer
 from studiohub.ui.widgets.click_catcher import ClickCatcher
 from studiohub.ui.sidebar.sidebar import Sidebar
-from studiohub.style import apply_style as apply_app_theme
-from studiohub.style.typography.rules import apply_typography
-
 
 class MainWindow(QtWidgets.QMainWindow):
     """
@@ -600,61 +600,12 @@ class MainWindow(QtWidgets.QMainWindow):
     # --------------------------------------------------
     
     def _start_media_worker(self) -> None:
-        """Start the media worker subprocess."""
+        """Start the media worker in a background thread."""
         try:
-            import psutil
-        except ImportError:
-            return  # Can't manage worker without psutil
-        
-        media_dir = (
-            Path(os.getenv("APPDATA", Path.home()))
-            / "SnooozeCo"
-            / "StudioHub"
-            / "media"
-        )
-        media_dir.mkdir(parents=True, exist_ok=True)
-        
-        pid_path = media_dir / "media_worker.pid"
-        log_path = media_dir / "media_worker.log"
-        
-        # Check for existing worker
-        if pid_path.exists():
-            try:
-                pid = int(pid_path.read_text(encoding="utf-8").strip())
-                if psutil.pid_exists(pid):
-                    return  # Worker already running
-            except Exception:
-                pass
-            
-            # Clean up stale PID
-            try:
-                pid_path.unlink(missing_ok=True)
-            except Exception:
-                pass
-        
-        # Find worker script
-        root = Path(__file__).resolve().parent.parent
-        worker_path = root / "services" / "media_worker" / "media_worker.py"
-        worker_python = root / "services" / "media_worker" / "venv311" / "Scripts" / "python.exe"
-        
-        if not worker_path.exists():
-            return  # No worker available
-        
-        # Use venv python if available, otherwise system python
-        python_exe = str(worker_python) if worker_python.exists() else "python"
-        
-        # Launch worker
-        try:
-            with open(log_path, "w") as log_file:
-                self._media_worker_proc = subprocess.Popen(
-                    [python_exe, str(worker_path)],
-                    stdout=log_file,
-                    stderr=subprocess.STDOUT,
-                    creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0,
-                )
+            start_media_worker(self.config_manager)
         except Exception:
-            pass  # Fail silently
-    
+            pass  # Fail silently - media service is non-critical
+        
     # --------------------------------------------------
     # Event Handlers
     # --------------------------------------------------

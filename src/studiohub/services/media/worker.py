@@ -57,22 +57,32 @@ class MediaWorker:
         if not self.session:
             return
 
-        self.session.add_media_properties_changed(
-            lambda *_: self._signal_changed()
-        )
-        self.session.add_playback_info_changed(
-            lambda *_: self._signal_changed()
-        )
+        try:
+            self.session.add_media_properties_changed(
+                lambda *_: self._signal_changed()
+            )
+            self.session.add_playback_info_changed(
+                lambda *_: self._signal_changed()
+            )
+        except Exception:
+            pass  # Fail silently if handlers can't be attached
 
     # -------------------------
     # Session management
     # -------------------------
 
     async def _refresh_session(self) -> None:
-        self.session = self.manager.get_current_session()
-        if self.session:
-            self._attach_session_handlers()
-            self._signal_changed()
+        try:
+            new_session = self.manager.get_current_session()
+            
+            if new_session != self.session:
+                self.session = new_session
+                
+            if self.session:
+                self._attach_session_handlers()
+                self._signal_changed()
+        except Exception:
+            self.session = None
 
     # -------------------------
     # IO helpers
@@ -83,57 +93,76 @@ class MediaWorker:
         if not thumb:
             return None, None
 
-        stream = await thumb.open_read_async()
-        reader = DataReader(stream)
+        try:
+            stream = await thumb.open_read_async()
+            reader = DataReader(stream)
 
-        size = int(stream.size)
-        if size <= 0:
+            size = int(stream.size)
+            if size <= 0:
+                return None, None
+
+            await reader.load_async(size)
+            buf = bytearray(size)
+            reader.read_bytes(buf)
+
+            data = bytes(buf)
+            return data, hashlib.md5(data).hexdigest()
+        except Exception:
             return None, None
 
-        await reader.load_async(size)
-        buf = bytearray(size)
-        reader.read_bytes(buf)
-
-        data = bytes(buf)
-        return data, hashlib.md5(data).hexdigest()
-
     def _write_json(self, payload: dict) -> None:
-        self.json_path.write_text(
-            json.dumps(payload, indent=2),
-            encoding="utf-8",
-        )
+        try:
+            self.json_path.write_text(
+                json.dumps(payload, indent=2),
+                encoding="utf-8",
+            )
+        except Exception:
+            pass
 
     # -------------------------
     # Snapshot
     # -------------------------
 
     async def _snapshot(self) -> None:
-        if not self.session:
-            payload = {
+        try:
+            if not self.session:
+                payload = {
+                    "active": False,
+                    "updated": time.time(),
+                }
+            else:
+                props = await self.session.try_get_media_properties_async()
+
+                art_bytes, art_hash = await self._read_thumbnail(props)
+                if art_hash and art_hash != self._last_art_hash and art_bytes:
+                    try:
+                        self.art_path.write_bytes(art_bytes)
+                        self._last_art_hash = art_hash
+                    except Exception:
+                        pass
+
+                payload = {
+                    "active": True,
+                    "updated": time.time(),
+                    "app": self.session.source_app_user_model_id or "",
+                    "artist": props.artist or "",
+                    "title": props.title or "",
+                    "album": props.album_title or "",
+                    "artwork": self.art_path.name if self._last_art_hash else None,
+                }
+
+            if payload != self._last_payload:
+                self._write_json(payload)
+                self._last_payload = payload
+                
+        except Exception:
+            # Write error state
+            error_payload = {
                 "active": False,
+                "error": "Media worker error",
                 "updated": time.time(),
             }
-        else:
-            props = await self.session.try_get_media_properties_async()
-
-            art_bytes, art_hash = await self._read_thumbnail(props)
-            if art_hash and art_hash != self._last_art_hash and art_bytes:
-                self.art_path.write_bytes(art_bytes)
-                self._last_art_hash = art_hash
-
-            payload = {
-                "active": True,
-                "updated": time.time(),
-                "app": self.session.source_app_user_model_id,
-                "artist": props.artist or "",
-                "title": props.title or "",
-                "album": props.album_title or "",
-                "artwork": self.art_path.name if self._last_art_hash else None,
-            }
-
-        if payload != self._last_payload:
-            self._write_json(payload)
-            self._last_payload = payload
+            self._write_json(error_payload)
 
     # -------------------------
     # Main loop
@@ -142,10 +171,19 @@ class MediaWorker:
     async def run(self) -> None:
         self._loop = asyncio.get_running_loop()
 
-        self.manager = await MediaManager.request_async()
-        self.manager.add_current_session_changed(
-            lambda *_: self._signal_changed()
-        )
+        try:
+            self.manager = await MediaManager.request_async()
+            self.manager.add_current_session_changed(
+                lambda *_: self._signal_changed()
+            )
+        except Exception:
+            error_payload = {
+                "active": False,
+                "error": "Failed to initialize media manager",
+                "updated": time.time(),
+            }
+            self._write_json(error_payload)
+            return
 
         await self._refresh_session()
 
@@ -154,7 +192,15 @@ class MediaWorker:
                 await asyncio.wait_for(self._changed_evt.wait(), timeout=3.0)
             except asyncio.TimeoutError:
                 pass
+            except Exception:
+                self._changed_evt.clear()
+                await asyncio.sleep(1)
+                continue
 
             self._changed_evt.clear()
-            await self._refresh_session()
-            await self._snapshot()
+            
+            try:
+                await self._refresh_session()
+                await self._snapshot()
+            except Exception:
+                await asyncio.sleep(2)
