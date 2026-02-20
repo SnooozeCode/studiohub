@@ -80,8 +80,9 @@ class StudioMoodPanel(QtWidgets.QWidget):
         self.artwork_label = QtWidgets.QLabel()
         self.artwork_label.setObjectName("StudioMoodArtwork")
         self.artwork_label.setFixedSize(102, 102)
-        self.artwork_label.setScaledContents(True)
-        
+        self.artwork_label.setScaledContents(False)
+        self.artwork_label.setAlignment(Qt.AlignCenter)
+
         # Container for text to allow vertical centering
         text_container = QtWidgets.QWidget()
         text_container.setObjectName("StudioMoodTextContainer")
@@ -174,8 +175,9 @@ class StudioMoodPanel(QtWidgets.QWidget):
         if self._media_service:
             self._media_service.updated.connect(self._on_media_updated)
     
+
     def _on_media_updated(self, payload: dict):
-        """Handle media updates from the service."""
+        """Handle media updates from the service with text truncation."""
         active = payload.get("active", False)
         artist = payload.get("artist", "")
         title = payload.get("title", "")
@@ -188,22 +190,25 @@ class StudioMoodPanel(QtWidgets.QWidget):
             # Hide no media label
             self.no_media_label.hide()
             
-            # Show track (first)
+            # Store full text and show track (first)
             if title:
-                self.track_label.setText(title)
+                self.track_label._full_text = title
+                self.track_label.setText(title)  # Will be truncated after layout
                 self.track_label.show()
             else:
                 self.track_label.hide()
             
-            # Show artist (second)
+            # Store full text and show artist (second)
             if artist:
+                self.artist_label._full_text = artist
                 self.artist_label.setText(artist)
                 self.artist_label.show()
             else:
                 self.artist_label.hide()
             
-            # Show album (third)
+            # Store full text and show album (third)
             if album:
+                self.album_label._full_text = album
                 self.album_label.setText(album)
                 self.album_label.show()
             else:
@@ -217,15 +222,13 @@ class StudioMoodPanel(QtWidgets.QWidget):
             
             # Update artwork
             if pixmap and isinstance(pixmap, QPixmap):
-                # Scale to 102x102
-                scaled = pixmap.scaled(
-                    102, 102,
-                    Qt.KeepAspectRatio,
-                    Qt.SmoothTransformation
-                )
-                self.artwork_label.setPixmap(scaled)
+                self._set_scaled_artwork(pixmap)
             else:
                 self.artwork_label.clear()
+            
+            # Apply truncation after layout is complete
+            QtCore.QTimer.singleShot(0, self._apply_truncation)
+            
         else:
             # Show no media label
             self.no_media_label.show()
@@ -236,7 +239,93 @@ class StudioMoodPanel(QtWidgets.QWidget):
             self._active_start_time = None
             self._active_timer.stop()
             self.active_time_changed.emit("Active · 0m")
-    
+
+    def _truncate_text_to_fit(self, text: str, label: QLabel) -> str:
+        """
+        Truncate text with ellipsis to fit the label's current width.
+        """
+        if not text:
+            return text
+            
+        font_metrics = label.fontMetrics()
+        # Leave 10px padding on each side
+        available_width = label.width() - 20
+        
+        # If text already fits, return as-is
+        if font_metrics.horizontalAdvance(text) <= available_width:
+            return text
+        
+        # Binary search for the maximum length that fits
+        low, high = 0, len(text)
+        while low < high:
+            mid = (low + high + 1) // 2
+            truncated = text[:mid] + "…"
+            if font_metrics.horizontalAdvance(truncated) <= available_width:
+                low = mid
+            else:
+                high = mid - 1
+        
+        return text[:low] + "…"
+
+    def _apply_truncation(self):
+        """Apply dynamic truncation to all visible text labels."""
+        # Store full text in user data if not already set
+        if self.track_label.isVisible():
+            # Store full text as user data if not already done
+            if not hasattr(self.track_label, '_full_text'):
+                self.track_label._full_text = self.track_label.text()
+            
+            full_text = self.track_label._full_text
+            truncated = self._truncate_text_to_fit(full_text, self.track_label)
+            self.track_label.setText(truncated)
+            self.track_label.setToolTip(full_text if truncated != full_text else "")
+        
+        if self.artist_label.isVisible():
+            if not hasattr(self.artist_label, '_full_text'):
+                self.artist_label._full_text = self.artist_label.text()
+            
+            full_text = self.artist_label._full_text
+            truncated = self._truncate_text_to_fit(full_text, self.artist_label)
+            self.artist_label.setText(truncated)
+            self.artist_label.setToolTip(full_text if truncated != full_text else "")
+        
+        if self.album_label.isVisible():
+            if not hasattr(self.album_label, '_full_text'):
+                self.album_label._full_text = self.album_label.text()
+            
+            full_text = self.album_label._full_text
+            truncated = self._truncate_text_to_fit(full_text, self.album_label)
+            self.album_label.setText(truncated)
+            self.album_label.setToolTip(full_text if truncated != full_text else "")
+
+    def resizeEvent(self, event):
+        """Handle resize events to re-apply truncation."""
+        super().resizeEvent(event)
+        # Re-apply truncation when panel is resized
+        if hasattr(self, '_apply_truncation'):
+            QtCore.QTimer.singleShot(0, self._apply_truncation)
+
+
+    def _set_scaled_artwork(self, pixmap: QPixmap):
+        """
+        Scale artwork to fit within 102x102 while preserving aspect ratio.
+        The label's fixed size ensures the container stays at 102x102.
+        """
+        if pixmap.isNull():
+            self.artwork_label.clear()
+            return
+        
+        # Scale to fit WITHIN 102x102 while maintaining aspect ratio
+        # This ensures the entire image is visible
+        scaled = pixmap.scaled(
+            102, 102,
+            Qt.KeepAspectRatio,           # Preserve aspect ratio
+            Qt.SmoothTransformation        # High quality scaling
+        )
+        
+        # Create a new pixmap with the scaled image
+        self.artwork_label.setPixmap(scaled)
+        
     def _update_active_time(self):
         """Update the active time counter for header."""
         if not self._active_start_time or not self._current_media_active:
