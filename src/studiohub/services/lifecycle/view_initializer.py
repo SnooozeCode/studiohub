@@ -54,7 +54,7 @@ class ViewInitializer:
         from studiohub.ui.views.missing_files_view_qt import MissingFilesViewQt
         from studiohub.ui.views.print_jobs_view_qt import PrintJobsViewQt
         from studiohub.ui.views.settings_view_qt import SettingsViewQt
-        from studiohub.ui.views.index_log_view_qt import IndexLogViewQt
+
         from studiohub.ui.views.print_economics_qt import PrintEconomicsViewQt
 
         # -----------------------------
@@ -112,11 +112,6 @@ class ViewInitializer:
             parent=self._parent,
         )
 
-        # -----------------------------
-        # Index Log
-        # -----------------------------
-
-        view_index_log = IndexLogViewQt(parent=self._parent)
 
         # -----------------------------
         # Print Economics
@@ -136,7 +131,6 @@ class ViewInitializer:
             "missing_files": view_missing,
             "print_economics": view_economics,
             "settings": view_settings,
-            "index_log": view_index_log,
         }
 
         return self._views
@@ -153,7 +147,6 @@ class ViewInitializer:
         self._wire_print_manager()
         self._wire_missing_files()
         self._wire_settings()
-        self._wire_index_log()
 
         # NOTE:
         # Dashboard refresh is now SELF-CONTAINED
@@ -207,17 +200,6 @@ class ViewInitializer:
         self._deps.paper_ledger.changed.connect(
             view.on_paper_ledger_changed
         )
-
-    # --------------------------------------------------
-    # Index Log
-    # --------------------------------------------------
-
-    def _wire_index_log(self) -> None:
-        view = self._views["index_log"]
-        model = self._deps.index_log_model
-
-        model.data_loaded.connect(view.set_rows)
-        model.error.connect(self._on_index_log_error)
 
     # ==================================================
     # Utilities
