@@ -24,6 +24,9 @@ QLabel#DashboardSubtitle {
     padding: 0;
 }
 
+QFrame#DashboardDivider {
+    background: __TEXT_MUTED__;
+}
 
 QTextEdit#DashboardNotes {
     background-color: __BG_SURFACE__;
@@ -260,8 +263,4 @@ QWidget#printCountBar_studio {
 QWidget#printCountBar_archive > QWidget,
 QWidget#printCountBar_studio > QWidget {
     background: transparent;
-}
-
-QFrame#CountsDivider {
-    background: __TEXT_MUTED__;
 }

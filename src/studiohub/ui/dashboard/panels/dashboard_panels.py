@@ -398,9 +398,8 @@ class MonthlyPrintCountsPanel(QWidget):
 
         # Divider
         divider = QFrame()
-        divider.setObjectName("CountsDivider")
+        divider.setObjectName("DashboardDivider")
         divider.setFixedHeight(1)
-        divider.setStyleSheet("background-color: rgba(255,255,255,0.05);")
         layout.addWidget(divider)
 
         # Spacing below divider
@@ -665,7 +664,7 @@ class MonthlyCostPanel(QWidget):
 
         # Divider
         divider = QFrame()
-        divider.setObjectName("CostDivider")
+        divider.setObjectName("DashboardDivider")
         divider.setFixedHeight(1)
         layout.addWidget(divider)
 

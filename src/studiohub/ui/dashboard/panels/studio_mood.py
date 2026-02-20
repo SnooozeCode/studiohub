@@ -140,7 +140,7 @@ class StudioMoodPanel(QtWidgets.QWidget):
         # Divider
         # =====================================================
         divider = QtWidgets.QFrame()
-        divider.setObjectName("StudioMoodDivider")
+        divider.setObjectName("DashboardDivider")
         divider.setFixedHeight(1)
         layout.addWidget(divider)
         
