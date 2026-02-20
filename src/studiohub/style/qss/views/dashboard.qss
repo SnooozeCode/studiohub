@@ -130,11 +130,6 @@ QFrame#StudioMoodDivider {
 }
 
 QLabel#StudioMoodActive {
-    font-size: 11px;
-    color: __TEXT_PRIMARY__;
-}
-
-QLabel#StudioMoodActive {
     font-size: 13px;
     color: __TEXT_PRIMARY__;
 }
