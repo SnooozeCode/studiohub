@@ -8,7 +8,7 @@ from studiohub.services.dashboard.service import DashboardService
 from studiohub.ui.dashboard.dashboard_container import DashboardContainer
 from studiohub.services.dashboard.notes_store import DashboardNotesStore
 from studiohub.services.media.service_qt import MediaServiceQt  # NEW
-from studiohub.ui.dashboard.dashboard_panels import (
+from studiohub.ui.dashboard.panels.dashboard_panels import (
     ContentHealthPanel,
     PrintReadinessPanel,
     MonthlyPrintCountsPanel,
