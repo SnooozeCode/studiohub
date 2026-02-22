@@ -62,7 +62,8 @@ class PrintJobsModelQt(QtCore.QAbstractTableModel):
 
     NEVER mutates data.
     """
-
+    status_message = QtCore.Signal(str)
+    
     def __init__(
         self,
         *,

@@ -973,7 +973,16 @@ class SettingsViewQt(QtWidgets.QFrame):
         if hasattr(self.config, "save"):
             self.config.save()
 
-        # Emit quiet confirmation for status bar
+        # Emit status message for notification system
+        # Find the main window and emit status
+        main_window = self.window()
+        if main_window and hasattr(main_window, '_safe_emit_status'):
+            main_window._safe_emit_status("Settings saved successfully")
+        else:
+            # Fallback to print for debugging
+            print("[Settings] Settings saved successfully")
+        
+        # Emit quiet confirmation for status bar (legacy)
         self.settings_saved.emit("Changes saved")
 
     def _set_bool_segmented(self, seg, value: bool):

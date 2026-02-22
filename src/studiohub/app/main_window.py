@@ -1,3 +1,5 @@
+# FILE: C:\Users\snooo\Desktop\src\studiohub\src\studiohub\app\main_window.py
+
 """Main application window."""
 from __future__ import annotations
 
@@ -23,7 +25,8 @@ from studiohub.ui.widgets.notifications_drawer import NotificationsDrawer
 from studiohub.ui.widgets.click_catcher import ClickCatcher
 from studiohub.ui.sidebar.sidebar import Sidebar
 
-from studiohub.services.media.runner import start_media_worker
+from studiohub.services.notifications.notification_service import Notification, NotificationAction
+
 
 class MainWindow(QtWidgets.QMainWindow):
     """
@@ -70,12 +73,16 @@ class MainWindow(QtWidgets.QMainWindow):
         # Dashboard loading state
         self._dash_loading: set[str] = set()
         
+        # Track which notifications have been shown
+        self._shown_notifications: set[str] = set()
+        
         # Setup UI
         self._setup_window()
         self._build_ui()
         
-        # Connect model status signals to status bar
+        # Connect model status signals to status bar and notifications
         self._connect_model_status_signals()
+        self._connect_status_to_notifications()
         
         # Finalize startup
         self._finalize_startup()
@@ -144,7 +151,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 print(f"[Status] {message}")  # Fallback to console
         except Exception as e:
             print(f"[ERROR] Failed to emit status '{message}': {e}")
-    
+
     def _connect_model_status_signals(self):
         """Connect all model status signals to the status bar."""
         try:
@@ -168,7 +175,7 @@ class MainWindow(QtWidgets.QMainWindow):
             if hasattr(self._index_manager, 'status_message'):
                 self._index_manager.status_message.connect(self._safe_emit_status)
             
-            # Paper ledger
+            # Paper ledger - MAKE SURE THIS IS CONNECTED
             if hasattr(self._deps.paper_ledger, 'status_message'):
                 self._deps.paper_ledger.status_message.connect(self._safe_emit_status)
                 
@@ -176,6 +183,371 @@ class MainWindow(QtWidgets.QMainWindow):
             
         except Exception as e:
             print(f"[WARN] Failed to connect model status signals: {e}")
+    
+    def _connect_status_to_notifications(self):
+        """Convert status messages to notifications (errors, warnings, successes)."""
+        sources = [
+            self._deps.missing_model,
+            self._deps.print_manager_model,
+            self._deps.mockup_model,
+            self._deps.print_log_state,
+            self._index_manager,
+            self._deps.paper_ledger,
+        ]
+        
+        # Add media runner if it exists
+        if hasattr(self, '_media_runner'):
+            sources.append(self._media_runner)
+        
+        for source in sources:
+            if source and hasattr(source, 'status_message'):
+                # Connect to notification filter
+                try:
+                    source.status_message.connect(self._filter_status_for_notification)
+                except Exception as e:
+                    print(f"[MainWindow] Failed to connect status for {source}: {e}")
+    
+    @Slot(str)
+    def _filter_status_for_notification(self, message: str):
+        """Filter status messages and convert to notifications."""
+        # Always show in status bar
+        self._safe_emit_status(message)
+        
+        # Check if this message should become a notification
+        if self._should_be_notification(message):
+            self._create_notification_from_status(message)
+    
+    def _should_be_notification(self, message: str) -> bool:
+        """Determine if a status message should become a notification."""
+        error_indicators = [
+            "failed", "error", "unavailable", "cannot", "invalid",
+            "missing", "not found", "crash", "warning"
+        ]
+        success_indicators = [
+            "ready", "finished", "completed", "success", "started",
+            "loaded", "updated", "refreshed", "saved", "replaced"
+        ]
+        msg_lower = message.lower()
+        
+        # Check for errors first
+        if any(indicator in msg_lower for indicator in error_indicators):
+            return True
+        
+        # Check for significant successes
+        if any(indicator in msg_lower for indicator in success_indicators):
+            # Filter out trivial messages
+            trivial = ["status", "click", "hover", "theme"]
+            if not any(t in msg_lower for t in trivial):
+                return True
+        
+        return False
+    
+    def _create_notification_from_status(self, message: str):
+        """Create a notification from a status message."""
+        import hashlib
+        
+        # Generate a stable key from the message
+        key = hashlib.md5(message.encode()).hexdigest()[:8]
+        
+        # Don't show duplicate notifications too frequently
+        if key in self._shown_notifications:
+            return
+        
+        self._shown_notifications.add(key)
+        
+        # Clear from shown set after a while to allow repeats
+        QtCore.QTimer.singleShot(60000, lambda: self._shown_notifications.discard(key))
+        
+        # Parse message to determine title, level, and actions
+        title, details, level, actions = self._parse_notification_details(message)
+        
+        # Determine auto-dismiss (warnings dismiss, errors persist, successes dismiss quickly)
+        auto_dismiss = None
+        if level == "warning":
+            auto_dismiss = 60
+        elif level == "success":
+            auto_dismiss = 30  # Success notifications auto-dismiss after 30 seconds
+        elif level == "info":
+            auto_dismiss = 20  # Info notifications auto-dismiss after 20 seconds
+        
+        notification = Notification(
+            key=f"status_{key}",
+            level=level,
+            title=title,
+            message=details,
+            timestamp=datetime.now(),
+            actions=actions,
+            auto_dismiss_seconds=auto_dismiss,
+        )
+        
+        self._deps.notification_service.emit(notification)
+    
+
+    def _parse_notification_details(self, message: str) -> tuple[str, str, str, list]:
+        """Parse status message into title, details, level, and actions."""
+        actions = []
+        msg_lower = message.lower()
+        
+        # ============ ERROR CASES ============
+        if "Media service unavailable" in message:
+            return (
+                "Media Service Failed",
+                "The media playback service is unavailable. System media controls may not work.",
+                "error",
+                self._create_actions_for_message(message)
+            )
+        
+        if "Index failed" in message:
+            return (
+                "Index Build Failed",
+                message,
+                "error",
+                self._create_actions_for_message(message)
+            )
+        
+        if "Failed to load print log" in message:
+            return (
+                "Print Log Error",
+                message,
+                "error",
+                self._create_actions_for_message(message)
+            )
+        
+        if "File watcher failed" in message:
+            return (
+                "File Watching Disabled",
+                "Automatic updates are disabled. Use refresh button to update.",
+                "warning",
+                self._create_actions_for_message(message)
+            )
+        
+        if "missing required paths" in msg_lower or "setup incomplete" in msg_lower:
+            return (
+                "Setup Required",
+                "Some required paths are not configured.",
+                "warning",
+                self._create_actions_for_message(message)
+            )
+        
+        # ============ SUCCESS CASES ============
+        if "settings saved" in msg_lower:
+            return (
+                "Settings Saved",
+                "Your configuration changes have been applied.",
+                "success",
+                [
+                    NotificationAction(
+                        label="Dismiss",
+                        callback=lambda: None,
+                        icon="close"
+                    )
+                ]
+            )
+        
+        if "paper replaced" in msg_lower:
+            # Extract paper name and length if possible
+            import re
+            match = re.search(r"Paper replaced: (.*?) \((\d+\.?\d*) ft\)", message)
+            if match:
+                paper_name, length = match.groups()
+                return (
+                    "Paper Roll Replaced",
+                    f"New roll installed: {paper_name} ({length} ft)",
+                    "success",
+                    [
+                        NotificationAction(
+                            label="View Paper Status",
+                            callback=lambda: self._navigation.show_view("settings"),
+                            icon="settings"
+                        ),
+                        NotificationAction(
+                            label="Dismiss",
+                            callback=lambda: None,
+                            icon="close"
+                        )
+                    ]
+                )
+            return (
+                "Paper Roll Replaced",
+                message,
+                "success",
+                [
+                    NotificationAction(
+                        label="View Settings",
+                        callback=lambda: self._navigation.show_view("settings"),
+                        icon="settings"
+                    ),
+                    NotificationAction(
+                        label="Dismiss",
+                        callback=lambda: None,
+                        icon="close"
+                    )
+                ]
+            )
+        
+        if "index ready" in msg_lower or "index finished" in msg_lower:
+            return (
+                "Index Built Successfully",
+                "Poster index has been updated and is ready to use.",
+                "success",
+                [
+                    NotificationAction(
+                        label="View Dashboard",
+                        callback=lambda: self._navigation.show_view("dashboard"),
+                        icon="dashboard"
+                    ),
+                    NotificationAction(
+                        label="Dismiss",
+                        callback=lambda: None,
+                        icon="close"
+                    )
+                ]
+            )
+        
+        if "media worker thread started" in msg_lower or "media worker started" in msg_lower:
+            return (
+                "Media Service Ready",
+                "Media playback detection is now active.",
+                "success",
+                [
+                    NotificationAction(
+                        label="Dismiss",
+                        callback=lambda: None,
+                        icon="close"
+                    )
+                ]
+            )
+        
+        if "file watcher started" in msg_lower:
+            return (
+                "File Watching Active",
+                "Poster files will be automatically monitored for changes.",
+                "success",
+                [
+                    NotificationAction(
+                        label="Dismiss",
+                        callback=lambda: None,
+                        icon="close"
+                    )
+                ]
+            )
+        
+        if "print log loaded" in msg_lower or "print log updated" in msg_lower:
+            return (
+                "Print Log Updated",
+                "Print job history has been refreshed.",
+                "info",
+                [
+                    NotificationAction(
+                        label="View Print Log",
+                        callback=lambda: self._navigation.show_view("print_jobs"),
+                        icon="print_manager"
+                    ),
+                    NotificationAction(
+                        label="Dismiss",
+                        callback=lambda: None,
+                        icon="close"
+                    )
+                ]
+            )
+        
+        if "refreshing" in msg_lower and any(src in msg_lower for src in ["archive", "studio"]):
+            return (
+                "Scan Started",
+                message,
+                "info",
+                [
+                    NotificationAction(
+                        label="Dismiss",
+                        callback=lambda: None,
+                        icon="close"
+                    )
+                ]
+            )
+        
+        # ============ DEFAULT CASES ============
+        # Determine level based on message content
+        level = "info"
+        if "error" in msg_lower or "failed" in msg_lower:
+            level = "error"
+        elif "warning" in msg_lower:
+            level = "warning"
+        elif "success" in msg_lower or "ready" in msg_lower or "finished" in msg_lower:
+            level = "success"
+        
+        # Default title and actions
+        title = message[:50] + "..." if len(message) > 50 else message
+        
+        # Add appropriate actions based on level
+        if level == "error":
+            actions = self._create_actions_for_message(message)
+        else:
+            actions = [
+                NotificationAction(
+                    label="Dismiss",
+                    callback=lambda: None,
+                    icon="close"
+                )
+            ]
+        
+        return title, message, level, actions
+    
+    def _create_actions_for_message(self, message: str) -> list:
+        """Create notification actions based on message type."""
+        actions = []
+        msg_lower = message.lower()
+        
+        # Retry action for index failures
+        if "Index failed" in message or "index" in msg_lower:
+            actions.append(NotificationAction(
+                label="Retry Index",
+                callback=lambda: self._index_manager.start_full_index(),
+                icon="refresh"
+            ))
+        
+        # Configure action for missing paths
+        if "missing required paths" in msg_lower or "setup incomplete" in msg_lower:
+            actions.append(NotificationAction(
+                label="Configure Paths",
+                callback=lambda: self._navigation.show_view("settings"),
+                icon="settings"
+            ))
+        
+        # Retry action for media service
+        if "Media service" in message:
+            actions.append(NotificationAction(
+                label="Restart Media",
+                callback=self._restart_media_worker,
+                icon="refresh"
+            ))
+        
+        # View log action for print log errors
+        if "print log" in msg_lower:
+            actions.append(NotificationAction(
+                label="View Print Log",
+                callback=lambda: self._navigation.show_view("print_jobs"),
+                icon="print_manager"
+            ))
+        
+        # Always add dismiss action
+        actions.append(NotificationAction(
+            label="Dismiss",
+            callback=lambda: None,
+            icon="close"
+        ))
+        
+        return actions
+    
+    def _restart_media_worker(self):
+        """Restart the media worker service."""
+        self._safe_emit_status("Restarting media service...")
+        
+        # Stop existing runner
+        if hasattr(self, '_media_runner'):
+            self._media_runner.stop()
+        
+        # Start new one
+        self._start_media_worker()
     
     # =====================================================
     # UI Creation
@@ -391,7 +763,7 @@ class MainWindow(QtWidgets.QMainWindow):
         QtCore.QTimer.singleShot(0, lambda: self._navigation.show_view("dashboard"))
         
         # Set initial theme tokens for dashboard
-        QtCore.QTimer.singleShot(100, self._update_dashboard_theme)  # Small delay to ensure dashboard is ready
+        QtCore.QTimer.singleShot(100, self._update_dashboard_theme)
 
     
     def _on_setup_incomplete(self, missing: list[str]) -> None:
@@ -542,6 +914,10 @@ class MainWindow(QtWidgets.QMainWindow):
             
         if not self._notifications_drawer or not self._sidebar:
             return
+        
+        # None indicates removal - handled separately
+        if notification is None:
+            return
             
         self._notifications_drawer.add_notification(notification)
         btn = self._sidebar._notifications_button
@@ -617,7 +993,9 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_replace_paper_requested(self, name: str, total_ft: float) -> None:
         """Handle replace paper request."""
         self._deps.paper_ledger.replace_paper(name, total_ft)
-        self._safe_emit_status(f"Paper replaced: {name} ({total_ft} ft)")
+        message = f"Paper replaced: {name} ({total_ft} ft)"
+        self._safe_emit_status(message)
+        # This will trigger a success notification with the paper replaced message
     
     # --------------------------------------------------
     # Index Management
@@ -652,15 +1030,21 @@ class MainWindow(QtWidgets.QMainWindow):
                 dashboard.set_loading("archive", False)
                 dashboard.set_loading("studio", False)
         
-        self.set_status("Index ready", timestamp=True, 
+        message = f"Index ready in {duration_ms}ms"
+        self.set_status(message, timestamp=True, 
                        decay_ms=UIConstants.STATUS_DECAY_MS)
+        
+        # This will trigger a success notification via _filter_status_for_notification
+        self._safe_emit_status(f"Index finished - {duration_ms}ms")
     
     def _on_index_error(self, message: str) -> None:
         """Handle index error."""
         self._sidebar.set_refresh_enabled(True)
         self._dash_loading.clear()
         self._safe_emit_status(f"Index failed: {message[:50]}", decay_ms=5000)
-        QtWidgets.QMessageBox.critical(self, "Index Error", message)
+        
+        # This will be caught by _filter_status_for_notification and become a notification
+        # with Retry button
     
     def _on_poster_updated(self, poster_key: str) -> None:
         """Handle incremental poster update."""
@@ -696,6 +1080,7 @@ class MainWindow(QtWidgets.QMainWindow):
         try:
             self._media_runner = start_media_worker(self.config_manager, self)
             self._media_runner.status_message.connect(self._safe_emit_status)
+            # The "Media worker thread started" message will trigger a success notification
         except Exception as e:
             self._safe_emit_status(f"Media service unavailable: {str(e)[:30]}")
         
@@ -708,7 +1093,7 @@ class MainWindow(QtWidgets.QMainWindow):
         super().resizeEvent(event)
         
         # Reposition notifications if open
-        if self._notifications_drawer.is_open:
+        if hasattr(self, '_notifications_drawer') and self._notifications_drawer and self._notifications_drawer.is_open:
             win_rect = self.rect()
             drawer_width = self._notifications_drawer.width()
             
@@ -730,6 +1115,8 @@ class MainWindow(QtWidgets.QMainWindow):
         """Handle key press events."""
         # ESC closes notifications
         if (event.key() == Qt.Key_Escape and 
+            hasattr(self, '_notifications_drawer') and 
+            self._notifications_drawer and 
             self._notifications_drawer.is_open):
             self._toggle_notifications()
             event.accept()

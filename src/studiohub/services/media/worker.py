@@ -108,7 +108,8 @@ class MediaWorker:
 
             data = bytes(buf)
             return data, hashlib.md5(data).hexdigest()
-        except Exception:
+        except Exception as e:
+            print(f"[MediaWorker] Failed to read thumbnail: {e}")
             return None, None
 
     def _write_json(self, payload: dict) -> None:

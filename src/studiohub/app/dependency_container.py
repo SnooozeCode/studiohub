@@ -149,8 +149,8 @@ class DependencyContainer:
             print_log_state.load()
         except Exception as e:
             # Emit to status bar via parent if available
-            if parent and hasattr(parent, 'safe_emit_status'):
-                parent.safe_emit_status(f"Warning: Failed to load print log - {str(e)[:50]}")
+            if parent and hasattr(parent, '_safe_emit_status'):  # Correct
+                parent._safe_emit_status(f"Warning: Failed to load print log - {str(e)[:50]}")
             else:
                 print(f"[WARN] Failed to load print log: {e}")
 

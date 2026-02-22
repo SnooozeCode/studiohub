@@ -89,15 +89,8 @@ class MediaWorkerRunner(QObject):
     
     def _emit_status(self, msg: str):
         """Emit status message safely from background thread."""
-        # Use Qt's queued connection to emit signal from thread
-        from PySide6.QtCore import QMetaObject, Qt, Q_ARG
-        
-        QMetaObject.invokeMethod(
-            self,
-            "status_message",
-            Qt.QueuedConnection,
-            Q_ARG(str, msg)
-        )
+        # Direct emit - signals are thread-safe in Qt
+        self.status_message.emit(msg)
 
 
 # Convenience function for backward compatibility

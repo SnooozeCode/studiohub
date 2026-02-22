@@ -19,6 +19,7 @@ class PaperLedger(QtCore.QObject):
     """
 
     changed = QtCore.Signal()
+    status_message = QtCore.Signal(str)
 
     def __init__(self, runtime_root: Path):
         super().__init__()
@@ -113,6 +114,10 @@ class PaperLedger(QtCore.QObject):
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
         self._append(event)
+        
+        # Emit status message for notification system
+        self.status_message.emit(f"Paper replaced: {name} ({total_ft} ft)")
+        
         self.changed.emit()
 
     def commit_print(self, job_id: str, length_in: float) -> None:
