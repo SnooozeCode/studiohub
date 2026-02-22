@@ -264,3 +264,18 @@ QWidget#printCountBar_archive > QWidget,
 QWidget#printCountBar_studio > QWidget {
     background: transparent;
 }
+
+/* In style/qss/views/dashboard.qss */
+
+QPlainTextEdit#NotesEdit {
+    background-color: transparent;
+    border: none;
+    color: __TEXT_PRIMARY__;
+    selection-background-color: __ACCENT__;
+    selection-color: __TEXT_PRIMARY__;
+}
+
+QPlainTextEdit#NotesEdit:focus {
+    border: none;
+    outline: none;
+}

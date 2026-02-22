@@ -7,7 +7,8 @@ from datetime import datetime
 from pathlib import Path
 
 from PySide6 import QtCore, QtWidgets, QtGui
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Slot
+
 
 from studiohub.app.dependency_container import DependencyContainer, Dependencies
 from studiohub.constants import UIConstants, APP_VERSION
@@ -21,6 +22,8 @@ from studiohub.style.typography.rules import apply_typography
 from studiohub.ui.widgets.notifications_drawer import NotificationsDrawer
 from studiohub.ui.widgets.click_catcher import ClickCatcher
 from studiohub.ui.sidebar.sidebar import Sidebar
+
+from studiohub.services.media.runner import start_media_worker
 
 class MainWindow(QtWidgets.QMainWindow):
     """
@@ -36,6 +39,8 @@ class MainWindow(QtWidgets.QMainWindow):
         """Initialize main window."""
         super().__init__()
         
+        self._status_callback = self._safe_emit_status
+        
         # Initialize dependencies
         self._deps = DependencyContainer.create(parent=self)
 
@@ -44,6 +49,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Initialize services
         self._index_manager = IndexManager(
             config_manager=self._deps.config_manager,
+            status_callback=self._safe_emit_status,
             parent=self,
         )
         
@@ -67,6 +73,9 @@ class MainWindow(QtWidgets.QMainWindow):
         # Setup UI
         self._setup_window()
         self._build_ui()
+        
+        # Connect model status signals to status bar
+        self._connect_model_status_signals()
         
         # Finalize startup
         self._finalize_startup()
@@ -120,7 +129,58 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Apply theme
         self.apply_theme()
-        
+    
+    # =====================================================
+    # Status Bar Helpers
+    # =====================================================
+    
+    @Slot(str)
+    def _safe_emit_status(self, message: str, decay_ms: int | None = UIConstants.STATUS_DECAY_MS):
+        """Safely emit a status message if the status bar exists."""
+        try:
+            if hasattr(self, '_status_left') and self._status_left:
+                self.set_status(message, decay_ms=decay_ms)
+            else:
+                print(f"[Status] {message}")  # Fallback to console
+        except Exception as e:
+            print(f"[ERROR] Failed to emit status '{message}': {e}")
+    
+    def _connect_model_status_signals(self):
+        """Connect all model status signals to the status bar."""
+        try:
+            # Missing files model
+            if hasattr(self._deps.missing_model, 'status_message'):
+                self._deps.missing_model.status_message.connect(self._safe_emit_status)
+            
+            # Print manager model
+            if hasattr(self._deps.print_manager_model, 'status_message'):
+                self._deps.print_manager_model.status_message.connect(self._safe_emit_status)
+            
+            # Mockup model
+            if hasattr(self._deps.mockup_model, 'status_message'):
+                self._deps.mockup_model.status_message.connect(self._safe_emit_status)
+            
+            # Print log state
+            if hasattr(self._deps.print_log_state, 'status_message'):
+                self._deps.print_log_state.status_message.connect(self._safe_emit_status)
+            
+            # Index manager
+            if hasattr(self._index_manager, 'status_message'):
+                self._index_manager.status_message.connect(self._safe_emit_status)
+            
+            # Paper ledger
+            if hasattr(self._deps.paper_ledger, 'status_message'):
+                self._deps.paper_ledger.status_message.connect(self._safe_emit_status)
+                
+            print("[MainWindow] Connected model status signals")
+            
+        except Exception as e:
+            print(f"[WARN] Failed to connect model status signals: {e}")
+    
+    # =====================================================
+    # UI Creation
+    # =====================================================
+    
     def _create_sidebar(self) -> Sidebar:
         """Create and configure sidebar."""
         sidebar = Sidebar(width=UIConstants.SIDEBAR_WIDTH)
@@ -207,24 +267,34 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def _setup_notifications(self) -> None:
         """Setup notifications drawer and overlay."""
-        self._notifications_drawer = NotificationsDrawer(self)
-        self._notifications_overlay = ClickCatcher(self)
-        self._notifications_overlay.hide()
-        
-        # Seed with existing notifications
-        for notification in self._deps.notification_service.all():
-            self._notifications_drawer.add_notification(notification)
-        
-        # Connect signals
-        self._deps.notification_service.add_listener(
-            self._on_notification_received
-        )
-        self._notifications_overlay.clicked.connect(
-            self._toggle_notifications
-        )
-        self.theme_changed.connect(
-            lambda _: self._notifications_drawer.refresh_theme()
-        )
+        try:
+            self._notifications_drawer = NotificationsDrawer(self)
+            self._notifications_overlay = ClickCatcher(self)
+            self._notifications_overlay.hide()
+            
+            # Seed with existing notifications
+            for notification in self._deps.notification_service.all():
+                self._notifications_drawer.add_notification(notification)
+            
+            # Connect signals
+            self._deps.notification_service.add_listener(
+                self._on_notification_received
+            )
+            self._notifications_overlay.clicked.connect(
+                self._toggle_notifications
+            )
+            self.theme_changed.connect(
+                lambda _: self._notifications_drawer.refresh_theme()
+            )
+            
+            # Mark as successfully initialized
+            self._notifications_available = True
+            
+        except Exception as e:
+            self._safe_emit_status(f"Notifications unavailable: {str(e)[:30]}")
+            self._notifications_available = False
+            self._notifications_drawer = None
+            self._notifications_overlay = None
     
     def _register_navigation_hooks(self) -> None:
         """Register view activation hooks."""
@@ -301,9 +371,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._sidebar.set_refresh_enabled(False)
         self._dash_loading = {"archive", "studio"}
         self.set_status("Building index...", decay_ms=None)
-
         
         if not is_valid:
+            self._safe_emit_status("Setup incomplete - please configure paths")
             QtCore.QTimer.singleShot(0, lambda: self._navigation.show_view("settings"))
             return
         
@@ -312,8 +382,11 @@ class MainWindow(QtWidgets.QMainWindow):
         self._apply_loaded_index(index)
         
         # Start file watcher
-        self._index_manager.start_file_watcher()
-        
+        try:
+            self._index_manager.start_file_watcher()
+        except Exception as e:
+            self._safe_emit_status("File watching unavailable - manual refresh only", decay_ms=4000)
+                
         # Show dashboard
         QtCore.QTimer.singleShot(0, lambda: self._navigation.show_view("dashboard"))
         
@@ -323,6 +396,7 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def _on_setup_incomplete(self, missing: list[str]) -> None:
         """Handle incomplete setup."""
+        self._safe_emit_status(f"Missing {len(missing)} required paths")
         settings_view = self._navigation.get_view("settings")
         if settings_view and hasattr(settings_view, "highlight_missing_paths"):
             settings_view.highlight_missing_paths(missing)
@@ -333,12 +407,11 @@ class MainWindow(QtWidgets.QMainWindow):
         if not manager or not getattr(manager, "current_theme", None):
             return {}
         return manager.current_theme.tokens
-    
+
     # --------------------------------------------------
     # Theme Management
     # --------------------------------------------------
     
-    # Add this new method to MainWindow
     def _update_dashboard_theme(self):
         """Update dashboard with current theme tokens."""
         dashboard = self._navigation.get_view("dashboard")
@@ -346,7 +419,6 @@ class MainWindow(QtWidgets.QMainWindow):
             tokens = self._get_theme_tokens()
             dashboard.set_theme_tokens(tokens)
 
-    # Update apply_theme method
     def apply_theme(self) -> None:
         """Apply current theme to application."""
         app = QtWidgets.QApplication.instance()
@@ -357,7 +429,6 @@ class MainWindow(QtWidgets.QMainWindow):
         # Update dashboard with new theme tokens
         self._update_dashboard_theme()
 
-    # Update toggle_theme method
     def toggle_theme(self) -> None:
         """Toggle between light and dark themes."""
         self._theme_name = (
@@ -401,6 +472,14 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def _toggle_notifications(self) -> None:
         """Toggle notifications drawer open/closed."""
+        # Safety check - if drawer failed to initialize, do nothing
+        if not hasattr(self, '_notifications_available') or not self._notifications_available:
+            print("[MainWindow] Notifications drawer not available")
+            return
+            
+        if not self._notifications_drawer or not self._notifications_overlay:
+            return
+            
         drawer = self._notifications_drawer
         overlay = self._notifications_overlay
         
@@ -457,9 +536,17 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def _on_notification_received(self, notification) -> None:
         """Handle new notification."""
+        # Safety check
+        if not hasattr(self, '_notifications_available') or not self._notifications_available:
+            return
+            
+        if not self._notifications_drawer or not self._sidebar:
+            return
+            
         self._notifications_drawer.add_notification(notification)
         btn = self._sidebar._notifications_button
-        btn.set_badge_count(btn.badge_count + 1)
+        if btn:  # Check if button exists
+            btn.set_badge_count(btn.badge_count + 1)
     
     # --------------------------------------------------
     # Navigation Hooks
@@ -481,6 +568,7 @@ class MainWindow(QtWidgets.QMainWindow):
     
     def _on_print_manager_activated(self) -> None:
         """Handle print manager activation."""
+        self._safe_emit_status("Refreshing print manager...")
         for src in ("archive", "studio"):
             self._deps.print_manager_model.refresh(src)
     
@@ -489,9 +577,9 @@ class MainWindow(QtWidgets.QMainWindow):
         for src in ("archive", "studio"):
             try:
                 self._deps.mockup_model.load_from_index(src)
-            except Exception:
-                pass
-        
+            except Exception as e:
+                self._safe_emit_status(f"Failed to load mockup data for {src}: {str(e)[:30]}")
+                
         queue = self._deps.mockup_model.get_queue()
         if queue is not None:
             mockup_view = self._navigation.get_view("mockup_generator")
@@ -511,16 +599,16 @@ class MainWindow(QtWidgets.QMainWindow):
             # let the view request refresh (wired to model.refresh)
             missing_view.on_activated()
 
-        except Exception:
-            pass
+        except Exception as e:
+            self._safe_emit_status(f"Error activating missing files: {str(e)[:40]}")
 
 
     def _on_print_jobs_activated(self) -> None:
         """Handle print jobs activation."""
         try:
             self._deps.print_log_state.load()
-        except Exception:
-            pass
+        except Exception as e:
+            self._safe_emit_status(f"Failed to reload print log: {str(e)[:40]}")
     
     def _on_index_log_activated(self) -> None:
         """Handle index log activation."""
@@ -529,6 +617,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_replace_paper_requested(self, name: str, total_ft: float) -> None:
         """Handle replace paper request."""
         self._deps.paper_ledger.replace_paper(name, total_ft)
+        self._safe_emit_status(f"Paper replaced: {name} ({total_ft} ft)")
     
     # --------------------------------------------------
     # Index Management
@@ -570,8 +659,7 @@ class MainWindow(QtWidgets.QMainWindow):
         """Handle index error."""
         self._sidebar.set_refresh_enabled(True)
         self._dash_loading.clear()
-        self.set_status("Index failed", timestamp=True,
-                       decay_ms=UIConstants.STATUS_DECAY_MS)
+        self._safe_emit_status(f"Index failed: {message[:50]}", decay_ms=5000)
         QtWidgets.QMessageBox.critical(self, "Index Error", message)
     
     def _on_poster_updated(self, poster_key: str) -> None:
@@ -606,9 +694,10 @@ class MainWindow(QtWidgets.QMainWindow):
     def _start_media_worker(self) -> None:
         """Start the media worker in a background thread."""
         try:
-            start_media_worker(self.config_manager)
-        except Exception:
-            pass  # Fail silently - media service is non-critical
+            self._media_runner = start_media_worker(self.config_manager, self)
+            self._media_runner.status_message.connect(self._safe_emit_status)
+        except Exception as e:
+            self._safe_emit_status(f"Media service unavailable: {str(e)[:30]}")
         
     # --------------------------------------------------
     # Event Handlers

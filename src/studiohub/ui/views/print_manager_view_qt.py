@@ -4,6 +4,8 @@ from typing import Optional, List
 
 from PySide6 import QtCore, QtGui, QtWidgets
 from PySide6.QtCore import Qt
+
+from studiohub.constants import PRINT_SIZES, PRINT_SIZES_DISPLAY
 from studiohub.ui.layout.row_layout import configure_view, RowProfile
 from studiohub.ui.layout.queue import QueueRowFactory
 
@@ -161,7 +163,7 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         # STATE
         # =================================================
         self._source = "archive"
-        self._active_size = "12x18"
+        self._active_size = PRINT_SIZES[0]  # "12x18"
         self._avail_sig = {"archive": -1, "studio": -1}
         self._data_cache = {"archive": {}, "studio": {}}
         self._current_bg_filter: Optional[str] = None
@@ -176,11 +178,24 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         self._model = None
 
         # =================================================
-        # SOURCE TOGGLES
+        # CREATE ALL WIDGETS FIRST (NO LAYOUTS YET)
         # =================================================
+        
+        # SOURCE TOGGLES
         self.btn_archive = QtWidgets.QPushButton("Archive")
         self.btn_studio = QtWidgets.QPushButton("Studio")
         
+        # SIZE TOGGLES
+        self.btn_12x18 = QtWidgets.QPushButton()
+        self.btn_18x24 = QtWidgets.QPushButton()
+        self.btn_24x36 = QtWidgets.QPushButton()
+        
+        # Set button text using constants AFTER creation
+        self.btn_12x18.setText(PRINT_SIZES_DISPLAY[PRINT_SIZES[0]])  # "12×18"
+        self.btn_18x24.setText(PRINT_SIZES_DISPLAY[PRINT_SIZES[1]])  # "18×24"
+        self.btn_24x36.setText(PRINT_SIZES_DISPLAY[PRINT_SIZES[2]])  # "24×36"
+
+        # Configure source buttons
         for b in (self.btn_archive, self.btn_studio):
             b.setCheckable(True)
             b.setMinimumWidth(80)
@@ -190,30 +205,7 @@ class PrintManagerViewQt(QtWidgets.QFrame):
             font.setPointSize(9)
             b.setFont(font)
 
-        self.btn_archive.clicked.connect(lambda: self._set_source("archive"))
-        self.btn_studio.clicked.connect(lambda: self._set_source("studio"))
-
-        source_group = QtWidgets.QButtonGroup(self)
-        source_group.setExclusive(True)
-        source_group.addButton(self.btn_archive)
-        source_group.addButton(self.btn_studio)
-
-        # =================================================
-        # FILTER BUTTONS (same row, right-aligned)
-        # =================================================
-        self.filter_container = QtWidgets.QWidget()
-        self.filter_container.setVisible(False)  # Only visible for Archive
-        self.filter_layout = QtWidgets.QHBoxLayout(self.filter_container)
-        self.filter_layout.setContentsMargins(0, 0, 0, 0)
-        self.filter_layout.setSpacing(4)
-
-        # =================================================
-        # SIZE TOGGLES (bottom left)
-        # =================================================
-        self.btn_12x18 = QtWidgets.QPushButton("12×18")
-        self.btn_18x24 = QtWidgets.QPushButton("18×24")
-        self.btn_24x36 = QtWidgets.QPushButton("24×36")
-        
+        # Configure size buttons
         for b in (self.btn_12x18, self.btn_18x24, self.btn_24x36):
             b.setCheckable(True)
             b.setMinimumWidth(70)
@@ -225,24 +217,18 @@ class PrintManagerViewQt(QtWidgets.QFrame):
 
         self.btn_12x18.setChecked(True)
 
-        size_group = QtWidgets.QButtonGroup(self)
-        size_group.setExclusive(True)
-        size_group.addButton(self.btn_12x18)
-        size_group.addButton(self.btn_18x24)
-        size_group.addButton(self.btn_24x36)
+        # FILTER CONTAINER
+        self.filter_container = QtWidgets.QWidget()
+        self.filter_container.setVisible(False)  # Only visible for Archive
+        self.filter_layout = QtWidgets.QHBoxLayout(self.filter_container)
+        self.filter_layout.setContentsMargins(0, 0, 0, 0)
+        self.filter_layout.setSpacing(4)
 
-        self.btn_12x18.clicked.connect(lambda: self._set_size("12x18"))
-        self.btn_18x24.clicked.connect(lambda: self._set_size("18x24"))
-        self.btn_24x36.clicked.connect(lambda: self._set_size("24x36"))
-
-        # =================================================
         # QUEUE / ACTION BUTTONS
-        # =================================================
         self.btn_clear = QtWidgets.QPushButton("Clear Queue")
         self.btn_clear.setObjectName("SourceToggle")
         self.btn_clear.setProperty("danger", True)
         self.btn_clear.setCursor(QtCore.Qt.PointingHandCursor)
-        self.btn_clear.clicked.connect(self.queue_clear_requested.emit)
         
         font = self.btn_clear.font()
         font.setPointSize(9)
@@ -257,12 +243,9 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         self.btn_send = QtWidgets.QPushButton("Send to Photoshop")
         self.btn_send.setProperty("primary", True)
         self.btn_send.setObjectName("SourceToggle")
-        self.btn_send.clicked.connect(self._confirm_and_send)
         self.btn_send.setFont(font)
 
-        # =================================================
         # DATA VIEWS
-        # =================================================
         self.available_stack = QtWidgets.QStackedWidget()
         self.tree_archive = self._build_available_tree()
         self.tree_studio = self._build_available_tree()
@@ -274,13 +257,42 @@ class PrintManagerViewQt(QtWidgets.QFrame):
             apply_view_typography(self.list_queue, "body")
         except:
             pass
-            
+
+        # =================================================
+        # SIGNAL WIRING (WIDGETS EXIST, LAYOUTS NOT YET)
+        # =================================================
+        
+        self.btn_archive.clicked.connect(lambda: self._set_source("archive"))
+        self.btn_studio.clicked.connect(lambda: self._set_source("studio"))
+
+        source_group = QtWidgets.QButtonGroup(self)
+        source_group.setExclusive(True)
+        source_group.addButton(self.btn_archive)
+        source_group.addButton(self.btn_studio)
+
+        size_group = QtWidgets.QButtonGroup(self)
+        size_group.setExclusive(True)
+        size_group.addButton(self.btn_12x18)
+        size_group.addButton(self.btn_18x24)
+        size_group.addButton(self.btn_24x36)
+
+        self.btn_12x18.clicked.connect(lambda: self._set_size(PRINT_SIZES[0]))
+        self.btn_18x24.clicked.connect(lambda: self._set_size(PRINT_SIZES[1]))
+        self.btn_24x36.clicked.connect(lambda: self._set_size(PRINT_SIZES[2]))
+
+        self.btn_clear.clicked.connect(self.queue_clear_requested.emit)
+        self.btn_send.clicked.connect(self._confirm_and_send)
+
         self.list_queue.items_dropped.connect(self.queue_add_requested)
         self.list_queue.remove_requested.connect(self._on_remove_paths_requested)
         self.list_queue.itemSelectionChanged.connect(
             self._sync_queue_row_selection_props
         )
 
+        # =================================================
+        # SHARED RESOURCES
+        # =================================================
+        
         # Shared, canonical queue row widgets (single source of truth)
         self._queue_rows = QueueRowFactory(
             badge_width=self.BADGE_WIDTH,
@@ -288,8 +300,10 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         )
 
         # =================================================
-        # ROOT GRID
+        # BUILD LAYOUT (NOW ALL WIDGETS EXIST)
         # =================================================
+        
+        # ROOT GRID
         root = QtWidgets.QGridLayout(self)
         root.setContentsMargins(24, 12, 24, 12)
         root.setHorizontalSpacing(12)
@@ -297,9 +311,7 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         root.setColumnStretch(0, 6)
         root.setColumnStretch(1, 4)
 
-        # =================================================
         # TOP ROW - Source toggles + Filter buttons (left), Clear (right)
-        # =================================================
         top_row_left = QtWidgets.QHBoxLayout()
         top_row_left.setSpacing(8)
         top_row_left.addWidget(self.btn_archive)
@@ -314,9 +326,7 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         root.addLayout(top_row_left, 0, 0)
         root.addLayout(top_row_right, 0, 1)
 
-        # =================================================
         # POSTERS TABLE
-        # =================================================
         posters_table = QtWidgets.QFrame()
         posters_table.setObjectName("TableSurface")
         posters_table.setAttribute(QtCore.Qt.WA_StyledBackground, True)
@@ -328,9 +338,7 @@ class PrintManagerViewQt(QtWidgets.QFrame):
 
         root.addWidget(posters_table, 1, 0)
 
-        # =================================================
         # QUEUE TABLE
-        # =================================================
         queue_table = QtWidgets.QFrame()
         queue_table.setObjectName("TableSurface")
         queue_table.setAttribute(QtCore.Qt.WA_StyledBackground, True)
@@ -342,9 +350,7 @@ class PrintManagerViewQt(QtWidgets.QFrame):
 
         root.addWidget(queue_table, 1, 1)
 
-        # =================================================
         # BOTTOM ROW - Size toggles (left) and Send (right)
-        # =================================================
         bottom_row_left = QtWidgets.QHBoxLayout()
         bottom_row_left.setSpacing(8)
         bottom_row_left.addWidget(self.btn_12x18)
@@ -367,7 +373,6 @@ class PrintManagerViewQt(QtWidgets.QFrame):
         self._set_source("archive", emit=False)
 
         repolish(self)
-
 
     # =================================================
     # Construction helpers
@@ -500,9 +505,8 @@ class PrintManagerViewQt(QtWidgets.QFrame):
                 if reason_group.buttons():
                     reason_group.buttons()[0].setChecked(True)
 
-            # 🔑 Force dialog to recompute size
+            # Force dialog to recompute size
             dlg.adjustSize()
-
 
         chk_reprint.toggled.connect(_on_toggle)
 
@@ -699,11 +703,6 @@ class PrintManagerViewQt(QtWidgets.QFrame):
     # Lifecycle
     # -------------------------------------------------
 
-
-    # -------------------------------------------------
-    # Model auto-binding
-    # -------------------------------------------------
-
     def _auto_bind_model(self) -> None:
         """Bind to SnooozeCoHub.print_model if hub forgot to wire signals."""
         if self._model_bound:
@@ -758,7 +757,7 @@ class PrintManagerViewQt(QtWidgets.QFrame):
 
     def _data_signature(self, data: dict) -> int:
         parts: List[str] = []
-        for size in ("12x18", "18x24", "24x36"):
+        for size in PRINT_SIZES:
             for it in (data or {}).get(size, []) or []:
                 parts.append(f"{size}|{it.get('path','')}|{it.get('name','')}")
         return hash("\n".join(parts))
@@ -805,10 +804,10 @@ class PrintManagerViewQt(QtWidgets.QFrame):
                 continue
 
             # ---- 12x18 pairing (2-UP) ----
-            if it.get("size") == "12x18":
+            if it.get("size") == PRINT_SIZES[0]:  # "12x18"
                 pair_idx = None
                 for j in range(i + 1, len(items)):
-                    if j not in used and items[j].get("size") == "12x18":
+                    if j not in used and items[j].get("size") == PRINT_SIZES[0]:
                         pair_idx = j
                         break
 
@@ -891,6 +890,10 @@ class PrintManagerViewQt(QtWidgets.QFrame):
 
     def _set_size(self, size: str):
         if size == self._active_size:
+            return
+
+        # Validate size
+        if size not in PRINT_SIZES:
             return
 
         self._active_size = size

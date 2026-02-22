@@ -6,21 +6,19 @@ from typing import Dict, List, Sequence
 
 from PySide6 import QtCore
 
+from studiohub.constants import PRINT_SIZES
+
 # =====================================================
-# Constants (MATCH PRINT MANAGER)
+# Constants
 # =====================================================
 
-SIZES = ("12x18", "18x24", "24x36")
-
-APP_ROOT = Path(__file__).resolve().parents[1]
-
-
+# Fixed: Need parents[2] to get to studiohub/ root
+APP_ROOT = Path(__file__).resolve().parents[2]
 JSX_DIR = APP_ROOT / "scripts" / "jsx"
 JSX_MOCKUP_WORKER = JSX_DIR / "mockup_worker.jsx"
 
-
 # =====================================================
-# Mockup Generator Model (Poster Index v2 — passthrough)
+# Mockup Generator Model
 # =====================================================
 
 class MockupGeneratorModelQt(QtCore.QObject):
@@ -64,8 +62,8 @@ class MockupGeneratorModelQt(QtCore.QObject):
         self._jobs_dir.mkdir(parents=True, exist_ok=True)
 
         self._posters: Dict[str, Dict[str, List[dict]]] = {
-            "archive": {s: [] for s in SIZES},
-            "studio": {s: [] for s in SIZES},
+            "archive": {s: [] for s in PRINT_SIZES},
+            "studio": {s: [] for s in PRINT_SIZES},
         }
 
         self._queue: List[dict] = []
@@ -112,7 +110,7 @@ class MockupGeneratorModelQt(QtCore.QObject):
                 .get(source, {})
         )
 
-        results: Dict[str, List[dict]] = {s: [] for s in SIZES}
+        results: Dict[str, List[dict]] = {s: [] for s in PRINT_SIZES}
 
         for poster_key, meta in posters.items():
             if not isinstance(meta, dict):
@@ -121,7 +119,7 @@ class MockupGeneratorModelQt(QtCore.QObject):
             display = meta.get("display_name") or poster_key
             sizes = meta.get("sizes") or {}
 
-            for size in SIZES:
+            for size in PRINT_SIZES:
                 size_meta = sizes.get(size) or {}
 
                 # v2 explicit existence flag
@@ -241,9 +239,6 @@ class MockupGeneratorModelQt(QtCore.QObject):
         """
         Build mockup job files and invoke Photoshop JSX worker.
         """
-
-        jobs_dir = self._jobs_dir
-
         if not self._queue:
             self.error.emit("Mockup queue is empty")
             return
@@ -252,11 +247,13 @@ class MockupGeneratorModelQt(QtCore.QObject):
             self.error.emit("No mockup templates available")
             return
 
+        jobs_dir = self._jobs_dir
+
         # Resolve paths
         try:
             output_root = self._cfg.get_mockup_output_root()
         except Exception as e:
-            self.error.emit(str(e))
+            self.error.emit(f"Failed to get mockup output root: {e}")
             return
 
         # Template lookup
@@ -267,8 +264,12 @@ class MockupGeneratorModelQt(QtCore.QObject):
         }
 
         # Clear previous jobs
-        for f in jobs_dir.glob("job_*.json"):
-            f.unlink(missing_ok=True)
+        try:
+            for f in jobs_dir.glob("job_*.json"):
+                f.unlink(missing_ok=True)
+        except Exception as e:
+            self.error.emit(f"Failed to clear old job files: {e}")
+            return
 
         written = 0
 
@@ -284,27 +285,32 @@ class MockupGeneratorModelQt(QtCore.QObject):
                 self.error.emit(f"Template not found: {template_name}")
                 return
 
-            poster_path = Path(poster_path)
-            out_name = f"{poster_path.stem}__{template_name}.jpg"
-            output_path = output_root / out_name
+            try:
+                poster_path = Path(poster_path)
+                out_name = f"{poster_path.stem}__{template_name}.jpg"
+                output_path = output_root / out_name
 
-            job = {
-                "schema": "mockup_job_v1",
-                "template_psd": psd_path,
-                "poster_tiff": str(poster_path),
-                "output_jpg": str(output_path),
-                "smart_object_layer": "ARTWORK",
-                "jpg_quality": 92,
-                "reset_transform": True,
-            }
+                job = {
+                    "schema": "mockup_job_v1",
+                    "template_psd": psd_path,
+                    "poster_tiff": str(poster_path),
+                    "output_jpg": str(output_path),
+                    "smart_object_layer": "ARTWORK",
+                    "jpg_quality": 92,
+                    "reset_transform": True,
+                }
 
-            job_file = jobs_dir / f"job_{i:04d}.json"
-            job_file.write_text(
-                json.dumps(job, indent=2),
-                encoding="utf-8",
-            )
+                job_file = jobs_dir / f"job_{i:04d}.json"
+                job_file.write_text(
+                    json.dumps(job, indent=2),
+                    encoding="utf-8",
+                )
 
-            written += 1
+                written += 1
+                
+            except Exception as e:
+                self.error.emit(f"Failed to create job {i}: {e}")
+                return
 
         if written == 0:
             self.error.emit("No mockup jobs were generated")
@@ -312,15 +318,32 @@ class MockupGeneratorModelQt(QtCore.QObject):
 
         # Invoke Photoshop (run JSX worker)
         try:
-            # Import where your Print Manager imports it from.
-            # If your project uses a different module path, adjust this import to match it.
-            from studiohub.services.photoshop import run_jsx  # type: ignore
+            from studiohub.services.photoshop import run_jsx
+        except ImportError as e:
+            self.error.emit(f"Failed to import run_jsx: {e}")
+            return
+
+        # Resolve JSX worker path
+        try:
+            # First try to get JSX root from config
+            jsx_root = self._cfg.get("paths", "jsx_root")
+            if jsx_root:
+                jsx_path = Path(jsx_root) / "mockup_worker.jsx"
+            else:
+                # Fallback to relative path
+                jsx_path = JSX_MOCKUP_WORKER
+            
+            if not jsx_path.exists():
+                self.error.emit(f"JSX worker not found at: {jsx_path}")
+                return
+                
         except Exception as e:
-            self.error.emit(f"run_jsx import failed: {e}")
+            self.error.emit(f"Failed to resolve JSX worker path: {e}")
             return
 
         try:
-            run_jsx(JSX_MOCKUP_WORKER, self._cfg)
+            run_jsx(jsx_path, self._cfg)
+        except FileNotFoundError as e:
+            self.error.emit(f"Photoshop executable not found: {e}")
         except Exception as e:
             self.error.emit(f"Failed to run mockup worker: {e}")
-            return

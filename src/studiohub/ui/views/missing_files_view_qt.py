@@ -11,10 +11,9 @@ from studiohub.style.typography.rules import apply_view_typography, apply_header
 
 from studiohub.ui.layout.row_layout import configure_view, RowProfile
 from studiohub.ui.icons import render_svg
-
+from studiohub.constants import PRINT_SIZES, PRINT_SIZES_DISPLAY
 
 HEADER_HEIGHT = 45
-SIZES = ("12x18", "18x24", "24x36")
 
 
 class CenteredIconDelegate(QtWidgets.QStyledItemDelegate):
@@ -122,7 +121,12 @@ class MissingFilesViewQt(QtWidgets.QFrame):
 
         # ✅ Use native header so alignment is correct
         self.tree.setHeaderHidden(False)
-        self.tree.setHeaderLabels(["Poster", "Master", "Web", "12×18", "18×24", "24×36"])
+        self.tree.setHeaderLabels(
+            ["Poster", "Master", "Web", 
+            PRINT_SIZES_DISPLAY["12x18"], 
+            PRINT_SIZES_DISPLAY["18x24"], 
+            PRINT_SIZES_DISPLAY["24x36"]]
+        )
 
         self.tree.setRootIsDecorated(True)
         self.tree.setItemsExpandable(True)
@@ -434,7 +438,7 @@ class MissingFilesViewQt(QtWidgets.QFrame):
                         for s in bg_rec.get("sizes", []):
                             sizes_with_missing_bg.add(s)
 
-                for idx, size in enumerate(SIZES, start=3):
+                for idx, size in enumerate(PRINT_SIZES, start=3):
                     size_exists = size in meta.get("sizes", {})
                     size_missing_output = size in missing_sizes
 
@@ -463,7 +467,7 @@ class MissingFilesViewQt(QtWidgets.QFrame):
                             .get("sizes", [])
                         )
 
-                        for idx, size in enumerate(SIZES, start=3):
+                        for idx, size in enumerate(PRINT_SIZES, start=3):
                             size_meta = sizes_meta.get(size, {})
                             self._icon(
                                 child,

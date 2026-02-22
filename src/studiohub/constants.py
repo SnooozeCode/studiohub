@@ -8,6 +8,15 @@ APP_VERSION = "v0.12.5-beta"
 APP_VENDOR = "SnooozeCo"
 APP_NAME = "StudioHub"
 
+# =====================================================
+# Print Sizes (Single Source of Truth)
+# =====================================================
+PRINT_SIZES = ("12x18", "18x24", "24x36")
+PRINT_SIZES_DISPLAY = {  # For UI display with proper multiplication sign
+    "12x18": "12×18",
+    "18x24": "18×24",
+    "24x36": "24×36",
+}
 
 class UIConstants:
     """UI sizing and timing constants."""
@@ -78,7 +87,3 @@ REQUIRED_PATHS: dict[str, PathRequirement] = {
         "type": "dir",
     },
 }
-
-# Business logic constants
-PAPER_WARNING_PERCENT = 25
-INDEX_DEBOUNCE_SECONDS = 2.0

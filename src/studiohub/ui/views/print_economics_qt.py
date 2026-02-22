@@ -3,6 +3,7 @@ from __future__ import annotations
 from PySide6 import QtWidgets, QtCore
 from PySide6.QtCore import Qt
 
+from studiohub.constants import PRINT_SIZES_DISPLAY
 
 class PrintEconomicsViewQt(QtWidgets.QWidget):
     """
@@ -50,7 +51,7 @@ class PrintEconomicsViewQt(QtWidgets.QWidget):
 
         layout.addWidget(self._filter("Period", ["Month", "Quarter", "Year"]))
         layout.addWidget(self._filter("Source", ["Both", "Archive", "Studio"]))
-        layout.addWidget(self._filter("Size", ["All", "12×18", "18×24", "24×36"]))
+        layout.addWidget(self._filter("Size", ["All"] + list(PRINT_SIZES_DISPLAY.values())))
 
         waste = QtWidgets.QCheckBox("Include Waste")
         waste.setChecked(True)

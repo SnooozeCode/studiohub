@@ -111,29 +111,23 @@ class PosterIndexWorker(QtCore.QObject):
     # -------------------------------------------------
 
     def _poster_fingerprint(self, poster_path: Path) -> int:
-        """
-        High-resolution fingerprint:
-        - max mtime_ns of folder + all files
-        - plus file count (catches deletions even if mtimes are weird)
-        """
         max_ns = 0
         file_count = 0
-
+        
         try:
             max_ns = max(max_ns, poster_path.stat().st_mtime_ns)
-        except Exception:
-            pass
-
+        except Exception as e:
+            self.status.emit(f"Warning: Could not read mtime for {poster_path.name}")
+            print(f"[IndexWorker] Failed to get mtime for {poster_path}: {e}")
+        
         for p in poster_path.rglob("*"):
             if p.is_file():
                 file_count += 1
                 try:
                     max_ns = max(max_ns, p.stat().st_mtime_ns)
-                except Exception:
-                    pass
-
-        # Combine both signals into one stable int
-        return (max_ns << 20) + file_count
+                except Exception as e:
+                    # Don't spam status for every file
+                    print(f"[IndexWorker] Failed to get mtime for {p}: {e}")
 
 
     def _scan_root(self, root: Path) -> Dict[str, dict]:

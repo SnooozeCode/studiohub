@@ -3,11 +3,12 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Dict, Any
 
+from studiohub.constants import PRINT_SIZES
+
 # =====================================================
 # Constants
 # =====================================================
 
-SIZES = ("12x18", "18x24", "24x36")
 MASTER_EXTENSIONS = {".tif", ".tiff", ".psd", ".psb"}
 IGNORED_FILENAMES = {
     "desktop.ini",
@@ -43,7 +44,7 @@ def scan_single_poster(poster_dir: Path) -> Dict[str, Any]:
     sizes: Dict[str, Any] = {}
     print_root = poster_dir / "PRINT"
 
-    for size in SIZES:
+    for size in PRINT_SIZES:
         size_dir = print_root / size
 
         entry = {

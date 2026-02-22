@@ -7,8 +7,8 @@ from PySide6 import QtCore
 
 from studiohub.config_manager import ConfigManager
 from studiohub.hub_models.index_normalization import normalize_background_name
+from studiohub.constants import PRINT_SIZES
 
-SIZES: Tuple[str, ...] = ("12x18", "18x24", "24x36")
 
 # Background variants expected for archive (normalized keys + display labels)
 _EXPECTED_BG_RAW: Tuple[str, ...] = ("Antique Parchment", "Blueprint", "Chalkboard")
@@ -146,16 +146,16 @@ class MissingFilesModelQt(QtCore.QObject):
 
             # Determine which sizes actually have printable output
             size_has_output = {}
-            for size in SIZES:
+            for size in PRINT_SIZES:
                 sm = sizes_meta.get(size) or {}
                 size_has_output[size] = self._patent_size_has_output(sm)
 
-            missing_sizes = [s for s in SIZES if not size_has_output.get(s, False)]
+            missing_sizes = [s for s in PRINT_SIZES if not size_has_output.get(s, False)]
 
             # Background missing is computed only for sizes that DO have output at all
             missing_bgs: Dict[str, Dict[str, Any]] = {}
 
-            for size in SIZES:
+            for size in PRINT_SIZES:
                 if not size_has_output.get(size, False):
                     continue
 
@@ -230,11 +230,11 @@ class MissingFilesModelQt(QtCore.QObject):
             missing_web = not bool(exists.get("web"))
 
             size_has_output = {}
-            for size in SIZES:
+            for size in PRINT_SIZES:
                 sm = sizes_meta.get(size) or {}
                 size_has_output[size] = self._studio_size_has_output(sm)
 
-            missing_sizes = [s for s in SIZES if not size_has_output.get(s, False)]
+            missing_sizes = [s for s in PRINT_SIZES if not size_has_output.get(s, False)]
 
             missing_payload: Dict[str, Any] = {}
 

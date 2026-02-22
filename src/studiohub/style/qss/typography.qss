@@ -1,79 +1,45 @@
+/* In style/qss/typography.qss - replace with this */
+
 /* ============================================================
-Base Typography (Semantic, Static)
+   Typography - Colors ONLY, NO font sizes or families
+   (fonts are handled programmatically)
 ============================================================ */
 
-/* ------------------------------------------------------------
-Global text safety
------------------------------------------------------------- */
-
-QLabel,
-QPushButton,
-QToolButton {
+/* Headings */
+QLabel[typography^="h"] {
     color: __TEXT_PRIMARY__;
 }
 
-/* ------------------------------------------------------------
-Headings
------------------------------------------------------------- */
-
-QLabel[typography="h1"],
-QLabel[typography="h2"],
-QLabel[typography="h3"],
-QLabel[typography="h4"],
-QLabel[typography="h5"],
 QLabel[typography="h6"] {
-    color: __TEXT_PRIMARY__;
-    font-weight: 600;
-}
-
-/* ------------------------------------------------------------
-Section headers / small caps
------------------------------------------------------------- */
-
-QLabel[typography="h6"] {
-    letter-spacing: 1px;
     color: __TEXT_MUTED__;
+    letter-spacing: 1px;  /* Keep letter-spacing in QSS */
 }
 
-/* ------------------------------------------------------------
-Navigation labels
------------------------------------------------------------- */
-
-QLabel[typography="nav"] {
-    letter-spacing: 1px;
-    font-weight: 600;
+/* Body text */
+QLabel[typography^="body"] {
     color: __TEXT_PRIMARY__;
 }
 
-/* ------------------------------------------------------------
-Body text
------------------------------------------------------------- */
-
-QLabel[typography="body"] {
-    color: __TEXT_PRIMARY__;
-    font-weight: 400;
-}
-
-QLabel[typography="body-strong"] {
-    color: __TEXT_PRIMARY__;
-    font-weight: 600;
-}
-
-/* ------------------------------------------------------------
-Secondary / muted text
------------------------------------------------------------- */
-
+/* Muted text */
 QLabel[typography="caption"],
 QLabel[typography="small"] {
     color: __TEXT_MUTED__;
-    font-weight: 400;
 }
 
-/* ------------------------------------------------------------
-Monospace
------------------------------------------------------------- */
+/* Navigation */
+QLabel[typography="nav"] {
+    color: __TEXT_PRIMARY__;
+    letter-spacing: 1px;
+}
 
+/* Monospace */
 QLabel[typography="mono"] {
-    font-family: monospace;
+    font-family: monospace;  /* Keep family override */
+    color: __TEXT_PRIMARY__;
+}
+
+/* Buttons inherit from app default */
+QPushButton,
+QToolButton {
     color: __TEXT_PRIMARY__;
 }

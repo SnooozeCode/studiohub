@@ -731,19 +731,19 @@ class RevenuePanel(QWidget):
 
 
 # ==================================================
-# Notes Panel 
+# Notes Panel
 # ==================================================
-class NotesPanel(QWidget):
-    """
-    Notes panel - plain text only, no HTML or rich text formatting.
-    Completely clears all default styling.
-    """
 
+# In ui/dashboard/panels/dashboard_panels.py
+
+class NotesPanel(QWidget):
+    
     NOTES_SAVE_DEBOUNCE_MS = 800
 
     def __init__(self, notes_store, parent=None):
         super().__init__(parent)
         self.setObjectName("NotesPanel")
+        
 
         self._store = notes_store
         self._loading = False
@@ -755,33 +755,18 @@ class NotesPanel(QWidget):
         self.notes_edit = QPlainTextEdit()
         self.notes_edit.setObjectName("NotesEdit")
         self.notes_edit.setPlaceholderText("Write your notes here...")
-        apply_typography(self.notes_edit, "body")
+        apply_typography(self.notes_edit, "body-small")
+        
         self.notes_edit.setFrameStyle(QFrame.NoFrame)
         self.notes_edit.setLineWrapMode(QPlainTextEdit.WidgetWidth)
 
         doc = self.notes_edit.document()
-        doc.setDefaultStyleSheet("")  # Remove any default CSS
-        
-        # Set a completely empty stylesheet for the widget itself
-        self.notes_edit.setStyleSheet("""
-            QPlainTextEdit {
-                background-color: transparent;
-                border: none;
-                padding: 0px;
-                font-family: inherit;
-                font-size: inherit;
-            }
-        """)
-        
-        # Reset to plain text mode explicitly
-        self.notes_edit.setPlainText("")
+        doc.setDocumentMargin(0)  # Slight padding
 
         layout.addWidget(self.notes_edit)
 
-        # Load saved text
         self._load()
 
-        # Debounced autosave
         self._timer = QTimer(self)
         self._timer.setSingleShot(True)
         self._timer.setInterval(self.NOTES_SAVE_DEBOUNCE_MS)

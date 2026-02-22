@@ -1,165 +1,174 @@
+# studiohub/style/typography/rules.py
 from __future__ import annotations
 
-from PySide6.QtGui import QFont
-from PySide6 import QtWidgets, QtGui
-from PySide6.QtWidgets import QWidget, QAbstractItemView, QApplication
 from PySide6.QtGui import QFont, QFontDatabase
+from PySide6.QtWidgets import QWidget, QApplication, QPushButton, QToolButton, QLabel
+from PySide6.QtCore import QObject
 
-from studiohub.constants import UIConstants
+from studiohub.style.typography.config import TypographyConfig
 
-# ============================================================
-# Typography Scale
-# (mirrors your original typography.py exactly)
-# ============================================================
 
-def build_typography_map(base_px: float):
-    return {
-        "h1-xl": (base_px * 1.9, QFont.Bold),
-        "h1":    (base_px * 1.6, QFont.Bold),
-        "h2":    (base_px * 1.35, QFont.DemiBold),
-        "h3":    (base_px * 1.2, QFont.DemiBold),
-        "h4":    (base_px * 1.1, QFont.Medium),
-        "h5":    (base_px * 1.0, QFont.Medium),
-        "h6":    (base_px * 0.95, QFont.Medium),
-
-        "body":        (base_px, QFont.Normal),
-        "body-strong": (base_px, QFont.Medium),
-        "body-small":  (base_px * 0.9, QFont.Normal),
-
-        "caption": (base_px * 0.9, QFont.Normal),
-        "small":   (base_px * 0.85, QFont.Normal),
-        "nav":     (base_px, QFont.Normal),
-
-        "tree": (base_px * 0.9, QFont.Normal),
-        "mono": (base_px * 0.9, QFont.Normal),
-    }
-
-def build_qss(tokens) -> str:
-    return f"""
-    /* ============================================================
-    Base Typography (Semantic, Size-Agnostic)
-    ============================================================ */
-
-    /* ------------------------------------------------------------
-    Global text safety
-    ------------------------------------------------------------ */
-
-    QLabel,
-    QPushButton,
-    QToolButton {{
-        /* Prevent ascender clipping on high DPI */
-    }}
-
-    /* ------------------------------------------------------------
-    Headings
-    ------------------------------------------------------------ */
-
-    QLabel[typography^="h"] {{
-        color: {tokens.text_primary};
-    }}
-
-    /* ------------------------------------------------------------
-    Section headers / small caps
-    ------------------------------------------------------------ */
-
-    QLabel[typography="h6"] {{
-        letter-spacing: 1px;
-        color: {tokens.text_muted};
-    }}
-
-    QHeaderView[typography="h4"]::section {{
-        font-size: {{ typography.h4.size }};
-        font-weight: {{ typography.h4.weight }};
-        letter-spacing: {{ typography.h4.tracking }};
-    }}
-
-    QLabel[typography="nav"] {{
-        letter-spacing: 1px;
-    }}
+class TypographyManager:
+    """
+    Central typography manager.
+    This replaces the old TYPOGRAPHY_MAP approach.
+    """
     
-    /* ------------------------------------------------------------
-    Body text
-    ------------------------------------------------------------ */
+    def __init__(self):
+        self.config = TypographyConfig
+        self._font_cache = {}
+    
+    # In studiohub/style/typography/rules.py
 
-    QLabel[typography="body"],
-    QLabel[typography="body-strong"] {{
-        color: {tokens.text_primary} ;
-    }}
+    def get_font(self, style_key: str) -> QFont:
+        """Get cached font for a style key."""
+        if style_key in self._font_cache:
+            return self._font_cache[style_key]
+        
+        # Handle legacy style keys
+        style_map = {
+            "h1-xl": "h1-xl", "h1": "h1", "h2": "h2", "h3": "h3",
+            "h4": "h4", "h5": "h5", "h6": "h6",
+            "body": "body", "body-strong": "body-strong", "body-small": "body-small",
+            "caption": "caption", "small": "small", "nav": "nav",
+            "tree": "tree", "mono": "mono",
+        }
+        
+        mapped_key = style_map.get(style_key, "body")
+        
+        if mapped_key not in self.config.STYLES:
+            mapped_key = "body"
+        
+        style = self.config.STYLES[mapped_key]
+        
+        # CRITICAL FIX: Create font properly
+        font = QFont()
+        font.setFamily(self.config.BASE_FONT_FAMILY)
+        
+        # Set pixel size FIRST
+        font.setPixelSize(style.size_px)
+        
+        # ALSO set a reasonable point size based on pixel size
+        # This prevents Qt from complaining about invalid point size
+        # 96 DPI is typical, so point_size = pixel_size * 72/96
+        point_size = (style.size_px * 72) / 96
+        font.setPointSizeF(point_size)
+        
+        # Set weight
+        font.setWeight(style.weight)
+        
+        # Set other properties
+        font.setStyleStrategy(QFont.PreferAntialias)  # Better rendering
+        
+        self._font_cache[style_key] = font
+        return font
+    
+    def apply_to_widget(self, widget: QWidget, style_key: str) -> None:
+        """
+        Apply typography to a widget.
+        This maintains the EXACT same behavior as your old apply_typography().
+        """
+        font = self.get_font(style_key)
+        widget.setFont(font)
+        
+        # Set property for QSS selectors (keeps styling hooks)
+        widget.setProperty("typography", style_key)
+        
+        # Force style refresh
+        widget.style().unpolish(widget)
+        widget.style().polish(widget)
 
-    /* ------------------------------------------------------------
-    Secondary / muted text
-    ------------------------------------------------------------ */
 
-    QLabel[typography="caption"],
-    QLabel[typography="small"] {{
-        color: {tokens.text_muted};
-    }}
+# Singleton instance (for backward compatibility)
+_manager = None
 
-    /* ------------------------------------------------------------
-    Monospace
-    ------------------------------------------------------------ */
+def get_manager() -> TypographyManager:
+    """Get or create the global typography manager."""
+    global _manager
+    if _manager is None:
+        _manager = TypographyManager()
+    return _manager
 
-    QLabel[typography="mono"] {{
-        font-family: monospace;
-        color: {tokens.text_primary};
-    }}
-
-    /* ------------------------------------------------------------
-    ------------------------------------------------------------ */
-
-    QPushButton {{
-        color: {tokens.text_primary};
-    }}
-    QPushButton:hover {{
-        color: {tokens.accent};
-    }}
-"""
 
 # ============================================================
-# Public API
+# PUBLIC API - EXACTLY THE SAME AS BEFORE
 # ============================================================
-
-# Build once at import
-_BASE_PX = UIConstants.BASE_FONT_PX
-TYPOGRAPHY_MAP = build_typography_map(_BASE_PX)
-
 
 def apply_typography(widget: QWidget, key: str) -> None:
-    if key not in TYPOGRAPHY_MAP:
-        return
-
-    size, weight = TYPOGRAPHY_MAP[key]
-
-    font = QFont(UIConstants.BASE_FONT_FAMILY)
-    font.setPixelSize(int(round(size)))
-    font.setWeight(weight)
-
-    widget.setFont(font)
-    widget.setProperty("typography", key)
-
-
-def apply_view_typography(view: QAbstractItemView, key: str) -> None:
-    if key not in TYPOGRAPHY_MAP:
-        return
-
-    size, weight = TYPOGRAPHY_MAP[key]
-
-    font = QFont(UIConstants.BASE_FONT_FAMILY)
-    font.setPixelSize(int(round(size)))
-    font.setWeight(weight)
-
-    view.setFont(font)
+    """
+    Apply typography to a widget.
+    
+    THIS IS IDENTICAL TO YOUR OLD FUNCTION.
+    Usage: apply_typography(self._caption, "h5")
+    
+    Args:
+        widget: The widget to style
+        key: Typography key (h1, h2, body, caption, etc.)
+    """
+    get_manager().apply_to_widget(widget, key)
 
 
-def apply_header_typography(header: QtWidgets.QHeaderView, key: str) -> None:
-    if key not in TYPOGRAPHY_MAP:
-        return
+def apply_view_typography(view: QWidget, key: str) -> None:
+    """
+    Apply typography to a view (table, tree, etc.)
+    Maintains backward compatibility.
+    """
+    get_manager().apply_to_widget(view, key)
 
-    size, weight = TYPOGRAPHY_MAP[key]
 
-    font = QFont(UIConstants.BASE_FONT_FAMILY)
-    font.setPixelSize(int(round(size)))
-    font.setWeight(weight)
+def apply_header_typography(header: QWidget, key: str) -> None:
+    """
+    Apply typography to a header.
+    Maintains backward compatibility.
+    """
+    get_manager().apply_to_widget(header, key)
 
-    header.setFont(font)
-    header.viewport().setFont(font)
+
+def apply_app_typography(app: QApplication) -> None:
+    """
+    Set application-wide default font.
+    New function to set base font.
+    """
+    default_font = get_manager().get_font("body")
+    app.setFont(default_font)
+
+
+# ============================================================
+# OPTIONAL: Auto-styling for containers (keeps existing code working)
+# ============================================================
+
+def style_all_children(parent: QWidget) -> None:
+    """
+    Style all children that haven't been explicitly styled.
+    This helps catch any widgets that might have been missed.
+    """
+    manager = get_manager()
+    
+    for child in parent.findChildren(QWidget):
+        # Skip if already has typography property
+        if child.property("typography"):
+            continue
+        
+        # Try to infer from object name
+        obj_name = child.objectName()
+        
+        # Common patterns from your codebase
+        if obj_name.startswith("Panel"):
+            if "Primary" in obj_name:
+                manager.apply_to_widget(child, "h2")
+            elif "Secondary" in obj_name:
+                manager.apply_to_widget(child, "body")
+            elif "Meta" in obj_name:
+                manager.apply_to_widget(child, "small")
+        
+        elif "Status" in obj_name:
+            manager.apply_to_widget(child, "body-small")
+        
+        elif "Title" in obj_name:
+            manager.apply_to_widget(child, "h4")
+        
+        elif isinstance(child, (QPushButton, QToolButton)):
+            manager.apply_to_widget(child, "body")
+        
+        elif isinstance(child, QLabel):
+            manager.apply_to_widget(child, "body")

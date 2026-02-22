@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
+from typing import Optional, Callable
 
 from PySide6 import QtCore
 
@@ -19,15 +20,19 @@ class IndexManager(QtCore.QObject):
     Handles background indexing, file watching, and incremental updates.
     """
     
-    # Signals
+    # =====================================================
+    # Signals - MUST be defined as class attributes
+    # =====================================================
     index_started = QtCore.Signal()
     index_finished = QtCore.Signal(int, str)  # duration_ms, status
     index_error = QtCore.Signal(str)
     poster_updated = QtCore.Signal(str)  # poster_key
+    status_message = QtCore.Signal(str)  # For status bar updates
     
     def __init__(
         self,
         config_manager: ConfigManager,
+        status_callback: Optional[Callable[[str], None]] = None,
         parent: QtCore.QObject | None = None,
     ):
         """
@@ -35,11 +40,13 @@ class IndexManager(QtCore.QObject):
         
         Args:
             config_manager: Configuration manager
+            status_callback: Optional callback for status messages
             parent: Parent Qt object
         """
         super().__init__(parent)
         
         self._config = config_manager
+        self._status_callback = status_callback
         self._index_running = False
         self._recently_indexed: dict[Path, float] = {}
         
@@ -61,6 +68,23 @@ class IndexManager(QtCore.QObject):
         # File watcher
         self._watcher: IndexWatcher | None = None
     
+    # =====================================================
+    # Internal helpers
+    # =====================================================
+    
+    def _emit_status(self, message: str):
+        """Emit status message via signal or callback."""
+        self.status_message.emit(message)
+        if self._status_callback:
+            try:
+                self._status_callback(message)
+            except Exception:
+                pass
+    
+    # =====================================================
+    # Public API
+    # =====================================================
+    
     def load_index(self) -> dict:
         """
         Load poster index from disk.
@@ -70,8 +94,10 @@ class IndexManager(QtCore.QObject):
         """
         try:
             path = self._config.get_poster_index_path()
+            self._emit_status(f"Loading index from {path}")
             return load_poster_index(path)
-        except Exception:
+        except Exception as e:
+            self._emit_status(f"Failed to load index: {str(e)[:40]}")
             return {"posters": {"archive": {}, "studio": {}}}
     
     def start_full_index(self) -> bool:
@@ -82,12 +108,14 @@ class IndexManager(QtCore.QObject):
             True if started, False if already running
         """
         if self._index_running:
+            self._emit_status("Index already running")
             return False
         
         self._index_running = True
         self._pending_result = None
         self._pending_error = None
         self.index_started.emit()
+        self._emit_status("Starting full index rebuild...")
         
         # Create worker thread
         self._index_thread = QtCore.QThread()
@@ -103,6 +131,7 @@ class IndexManager(QtCore.QObject):
             self._on_index_error,
             QtCore.Qt.QueuedConnection
         )
+        self._index_worker.status.connect(self._emit_status)
         
         self._index_thread.started.connect(self._index_worker.run)
         self._index_thread.finished.connect(
@@ -123,6 +152,7 @@ class IndexManager(QtCore.QObject):
             studio_root = Path(self._config.get("paths", "studio_root", ""))
             
             if not archive_root.exists() or not studio_root.exists():
+                self._emit_status("Cannot start file watcher: paths not configured")
                 return
             
             self._watcher = IndexWatcher(
@@ -133,13 +163,19 @@ class IndexManager(QtCore.QObject):
             
             self._watcher.poster_dirty.connect(self._on_poster_dirty)
             self._watcher.start()
-        except Exception:
-            pass  # Fail silently if watcher can't start
+            self._emit_status("File watcher started")
+            
+        except Exception as e:
+            self._emit_status(f"File watcher failed: {str(e)[:40]}")
     
     @property
     def is_running(self) -> bool:
         """Check if index operation is currently running."""
         return self._index_running
+    
+    # =====================================================
+    # Signal handlers
+    # =====================================================
     
     @QtCore.Slot(int, str)
     def _on_index_finished(self, duration_ms: int, status: str) -> None:
@@ -175,6 +211,7 @@ class IndexManager(QtCore.QObject):
         elif self._pending_result:
             duration_ms, status = self._pending_result
             self.index_finished.emit(duration_ms, status)
+            self._emit_status(f"Index finished in {duration_ms}ms")
             self._pending_result = None
     
     @QtCore.Slot(str)
@@ -197,6 +234,7 @@ class IndexManager(QtCore.QObject):
             return
         
         self._recently_indexed[poster_path] = now
+        self._emit_status(f"Poster changed: {poster_path.name}")
         # Incremental worker will handle the update
     
     @QtCore.Slot(str)
@@ -208,3 +246,4 @@ class IndexManager(QtCore.QObject):
             poster_key: Updated poster identifier
         """
         self.poster_updated.emit(poster_key)
+        self._emit_status(f"Poster updated: {poster_key}")

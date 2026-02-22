@@ -57,6 +57,7 @@ class Sidebar(QWidget):
         self._group_children: dict[str, set[str]] = {}
 
         self._notifications_button: SidebarButton | None = None
+        self._notifications_drawer_valid = True  # Flag to track if drawer is working
 
         self._groups: dict[str, SidebarGroup] = {}
         self._buttons: dict[str, SidebarButton] = {}
@@ -213,20 +214,44 @@ class Sidebar(QWidget):
         self._menu_button.button.clicked.connect(self.toggle_collapsed)
         self._layout.addWidget(self._menu_button)
 
+        # Create notifications button with safe click handler
         self._notifications_button = SidebarButton(
             "Notifications",
             icon="notification",
             show_indicator=True,
-            on_click=self._toggle_notifications_drawer,
         )
+        
+        # Use a safe wrapper for the click handler
+        self._notifications_button.button.clicked.connect(self._safe_toggle_notifications)
+        
         self._layout.addWidget(self._notifications_button)
 
-        # ───────── Divider ─────────
+        # ──────────── Divider ────────────
         self._layout.addWidget(SidebarDivider())
 
 
-    def _toggle_notifications_drawer(self):
-        self.notifications_requested.emit()
+    def _safe_toggle_notifications(self):
+        """
+        Safely emit notifications signal with error handling.
+        Prevents crashes if the notifications drawer isn't properly initialized.
+        """
+        try:
+            # Check if main window exists and has the expected method
+            main_window = self.window()
+            if main_window and hasattr(main_window, '_toggle_notifications'):
+                self.notifications_requested.emit()
+            else:
+                # Fallback: log warning and maybe show a tooltip
+                print("[Sidebar] Notifications drawer not available")
+                
+                # Optional: Show a temporary tooltip on the button
+                if self._notifications_button:
+                    self._notifications_button.setToolTip("Notifications not available")
+                    QTimer.singleShot(2000, lambda: self._notifications_button.setToolTip(""))
+        except Exception as e:
+            print(f"[Sidebar] Error toggling notifications: {e}")
+            # Mark drawer as invalid to prevent future attempts
+            self._notifications_drawer_valid = False
 
 
     # =================================================
@@ -351,7 +376,7 @@ class Sidebar(QWidget):
         if self._notifications_button:
             self._notifications_button.set_collapsed(self._collapsed)
 
-        # 🔑 alignment fix
+        # 🔥 alignment fix
         self._layout.setAlignment(
             Qt.AlignHCenter if self._collapsed else Qt.AlignLeft
         )

@@ -147,8 +147,12 @@ class DependencyContainer:
         # Print log may not exist during first launch — never crash
         try:
             print_log_state.load()
-        except Exception:
-            pass
+        except Exception as e:
+            # Emit to status bar via parent if available
+            if parent and hasattr(parent, 'safe_emit_status'):
+                parent.safe_emit_status(f"Warning: Failed to load print log - {str(e)[:50]}")
+            else:
+                print(f"[WARN] Failed to load print log: {e}")
 
         notes_store = DashboardNotesStore(
             config_manager=config_manager

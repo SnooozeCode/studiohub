@@ -8,12 +8,11 @@ from typing import Any, Dict, List, Sequence
 from PySide6 import QtCore
 
 from studiohub.hub_models.poster_index import load_poster_index
-from studiohub.hub_models.poster_index_builder import SIZES
-
 from studiohub.services.photoshop import run_jsx
 from studiohub.services.print_log_writer import append_print_log
 from studiohub.services.paper_ledger import PaperLedger
 
+from studiohub.constants import PRINT_SIZES
 
 # =====================================================
 # Application paths
@@ -444,13 +443,13 @@ class PrintManagerModelQt(QtCore.QObject):
         if not isinstance(posters, dict):
             posters = {}
 
-        results: Dict[str, List[dict]] = {s: [] for s in SIZES}
+        results: Dict[str, List[dict]] = {s: [] for s in PRINT_SIZES}
 
         for poster_key, meta in posters.items():
             display = meta.get("display_name") or poster_key
             sizes = meta.get("sizes") or {}
 
-            for size in SIZES:
+            for size in PRINT_SIZES:
                 size_meta = sizes.get(size) or {}
                 if not size_meta.get("exists"):
                     continue

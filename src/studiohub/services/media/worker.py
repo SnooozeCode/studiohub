@@ -56,7 +56,7 @@ class MediaWorker:
     def _attach_session_handlers(self) -> None:
         if not self.session:
             return
-
+        
         try:
             self.session.add_media_properties_changed(
                 lambda *_: self._signal_changed()
@@ -64,8 +64,9 @@ class MediaWorker:
             self.session.add_playback_info_changed(
                 lambda *_: self._signal_changed()
             )
-        except Exception:
-            pass  # Fail silently if handlers can't be attached
+        except Exception as e:
+            print(f"[MediaWorker] Failed to attach session handlers: {e}")
+            # Non-critical, continue
 
     # -------------------------
     # Session management
