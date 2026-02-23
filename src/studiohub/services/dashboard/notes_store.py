@@ -37,29 +37,38 @@ class DashboardNotesStore:
 
     def load_html(self) -> str:
         """
-        Load notes safely with automatic backup fallback.
+        Load notes as HTML.
         
         Returns:
-            Notes content as string, or empty string if file doesn't exist
+            Notes content as HTML string, or empty string if file doesn't exist
         """
         if not self._notes_path.exists():
             return ""
 
-        # Use safe_read_json which automatically falls back to backups
         data = safe_read_json(self._notes_path, default={})
         
         if not data:
             return ""
             
-        return data.get("content", "")
+        content = data.get("content", "")
+        
+        # Ensure it's valid HTML (add wrapper if needed)
+        if content and not content.strip().startswith('<'):
+            content = f"<html><body>{content}</body></html>"
+        
+        return content
 
     def save_html(self, html: str) -> None:
         """
-        Save notes atomically with file locking.
+        Save notes as HTML atomically.
         
         Args:
-            html: Notes content to save
+            html: Notes content to save (HTML format)
         """
+        # Ensure it's valid HTML
+        if html and not html.strip().startswith('<'):
+            html = f"<html><body>{html}</body></html>"
+        
         payload = {
             "version": 1,
             "updated_at": datetime.utcnow().isoformat(),
@@ -67,9 +76,7 @@ class DashboardNotesStore:
         }
 
         try:
-            # Use file lock to prevent concurrent writes
             with FileLock(self._lock_path, timeout=2.0):
-                # Write atomically with backup
                 atomic_write_json(
                     self._notes_path,
                     payload,
@@ -81,7 +88,6 @@ class DashboardNotesStore:
             
         except TimeoutError:
             logger.warning("Could not acquire lock for notes, trying without lock")
-            # Fall back to atomic write without lock
             try:
                 atomic_write_json(self._notes_path, payload, make_backup=True, indent=2)
             except Exception as e:
@@ -89,7 +95,6 @@ class DashboardNotesStore:
                 
         except Exception as exc:
             logger.error(f"Failed to save notes: {exc}")
-
     # -----------------------------------------------------------------
     # Additional Utility Methods
     # -----------------------------------------------------------------

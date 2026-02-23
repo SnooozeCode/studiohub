@@ -176,6 +176,15 @@ class IndexManager(QtCore.QObject):
         """Check if index operation is currently running."""
         return self._index_running
     
+    def shutdown(self):
+        """Shutdown index manager and clean up resources."""
+        self._index_running = False
+        if self._index_thread and self._index_thread.isRunning():
+            self._index_thread.quit()
+            self._index_thread.wait(1000)
+        if self._watcher:
+            self._watcher.stop()
+        
     # =====================================================
     # Signal handlers
     # =====================================================
