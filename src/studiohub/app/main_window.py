@@ -392,11 +392,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 "success",
                 [
                     NotificationAction(
-                        label="View Dashboard",
-                        callback=lambda: self._navigation.show_view("dashboard"),
-                        icon="dashboard"
-                    ),
-                    NotificationAction(
                         label="Dismiss",
                         callback=lambda: None,
                         icon="close"

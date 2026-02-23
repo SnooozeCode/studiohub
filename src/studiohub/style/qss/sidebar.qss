@@ -121,16 +121,13 @@ QFrame#NotificationsDrawer {
 QFrame#NotificationsHeader {
     background: __BG_HEADER__;
     border-bottom: 1px solid __BORDER__;
+    margin-bottom: 5px;
 }
 
 QWidget#NotificationRow {
     background: __BG_SURFACE__;
 }
 
-QFrame#NotificationDivider {
-    background: __BORDER__;
-    margin: 0 16px;
-}
 
 QLabel[role="notification-title"] {
     font-weight: 600;
