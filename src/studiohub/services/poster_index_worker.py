@@ -10,7 +10,9 @@ from datetime import datetime
 from PySide6 import QtCore
 
 from studiohub.hub_models.poster_index_builder import scan_single_poster
+from studiohub.utils.logging import get_logger
 
+logger = get_logger(__name__)
 
 class PosterIndexWorker(QtCore.QObject):
     finished = QtCore.Signal(int, str)
@@ -118,7 +120,7 @@ class PosterIndexWorker(QtCore.QObject):
             max_ns = max(max_ns, poster_path.stat().st_mtime_ns)
         except Exception as e:
             self.status.emit(f"Warning: Could not read mtime for {poster_path.name}")
-            print(f"[IndexWorker] Failed to get mtime for {poster_path}: {e}")
+            self._logger.debug(f"[IndexWorker] Failed to get mtime for {poster_path}: {e}")
         
         for p in poster_path.rglob("*"):
             if p.is_file():
@@ -127,7 +129,7 @@ class PosterIndexWorker(QtCore.QObject):
                     max_ns = max(max_ns, p.stat().st_mtime_ns)
                 except Exception as e:
                     # Don't spam status for every file
-                    print(f"[IndexWorker] Failed to get mtime for {p}: {e}")
+                    self._logger.warning(f"[IndexWorker] Failed to get mtime for {p}: {e}")
 
 
     def _scan_root(self, root: Path) -> Dict[str, dict]:
@@ -163,7 +165,7 @@ class PosterIndexWorker(QtCore.QObject):
             }
 
     def _save_index(self):
-        print("[IndexWorker] Updated at:", self.index_path)
+        self._logger.info("[IndexWorker] Updated at:", self.index_path)
 
         tmp = self.index_path.with_suffix(".tmp")
         tmp.write_text(json.dumps(self.index, indent=2), encoding="utf-8")

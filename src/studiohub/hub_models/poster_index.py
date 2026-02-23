@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 import json
 
+from studiohub.utils.logging import get_logger
+logger = get_logger(__name__)
 
 def load_poster_index(path: str | Path) -> dict:
     """Load the cached poster index from an explicit path."""
@@ -16,7 +18,7 @@ def load_poster_index(path: str | Path) -> dict:
         if isinstance(data, dict):
             return data
     except Exception as e:
-        print(f"[WARN] Failed to load poster index from {path}: {e}")
+        logger.warning(f"Failed to load poster index from {path}: {e}")
         # Could emit to status bar if we had a reference
     
     return {"posters": {"archive": {}, "studio": {}}}

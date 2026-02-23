@@ -12,6 +12,9 @@ from studiohub.ui.layout.queue import QueueRowFactory
 from studiohub.style.typography.rules import apply_view_typography, apply_typography
 from PySide6.QtGui import QFont
 
+from studiohub.utils.logging import get_logger
+logger = get_logger(__name__)
+
 HEADER_HEIGHT = 40
 
 # =====================================================
@@ -742,7 +745,7 @@ class PrintManagerViewQt(QtWidgets.QFrame):
 
     @QtCore.Slot(str)
     def _on_model_error(self, msg: str) -> None:
-        print("[PrintManager] refresh error:", msg)
+        logger.warning(f"Print manager refresh error: {msg}")
 
     def on_activated(self):
         self._auto_bind_model()

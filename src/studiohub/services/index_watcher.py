@@ -8,6 +8,9 @@ from PySide6 import QtCore
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
+from studiohub.utils.logging import get_logger
+
+logger = get_logger(__name__)
 
 class _PosterFolderHandler(FileSystemEventHandler):
     """
@@ -62,11 +65,12 @@ class IndexWatcher(QtCore.QObject):
 
     def start(self):
         self._observer.start()
-        print("[IndexWatcher] started")
+        logger.info("[IndexWatcher] started")
 
     def stop(self):
         self._observer.stop()
         self._observer.join()
+        logger.info("Index watcher stopped")
 
     # ----------------------------
     # Internal
@@ -93,9 +97,15 @@ class IndexWatcher(QtCore.QObject):
         with self._lock:
             posters = list(self._pending)
             self._pending.clear()
-
+        
+        # Emit signals via Qt's queued connection
         for poster_path in posters:
-            self.poster_dirty.emit(str(poster_path))
+            QtCore.QMetaObject.invokeMethod(
+                self, 
+                "poster_dirty", 
+                QtCore.Qt.QueuedConnection,
+                QtCore.Q_ARG(str, str(poster_path))
+            )
 
     def _resolve_poster_root(self, path: Path) -> Path | None:
         for parent in [path, *path.parents]:

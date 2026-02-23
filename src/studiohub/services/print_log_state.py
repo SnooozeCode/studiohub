@@ -28,6 +28,7 @@ from typing import List, Dict, Any, Optional, Tuple
 
 from PySide6 import QtCore
 
+from studiohub.utils.logging import log_performance
 
 # =====================================================
 # Canonical Job Row (base job + merged event fields)
@@ -81,6 +82,7 @@ class PrintLogState(QtCore.QObject):
     # Lifecycle
     # -------------------------------------------------
 
+    @log_performance()
     def load(self) -> None:
         try:
             if not self._path.exists():

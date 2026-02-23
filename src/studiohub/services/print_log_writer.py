@@ -6,6 +6,9 @@ from pathlib import Path
 from datetime import datetime
 from typing import Optional, Iterable
 
+from studiohub.utils.logging import get_logger
+logger = get_logger(__name__)
+
 # =====================================================
 # Schema Constants
 # =====================================================
@@ -91,5 +94,5 @@ def append_print_log(
         return record
 
     except Exception as e:
-        print(f"[PrintLog] Failed to write log: {e}")
+        logger.error(f"[PrintLog] Failed to write log: {e}")
         return {}

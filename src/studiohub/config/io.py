@@ -6,10 +6,15 @@ from typing import Dict, Any
 from copy import deepcopy
 
 from .defaults import DEFAULT_CONFIG
+from studiohub.utils.logging import get_logger
+
+logger = get_logger(__name__)
+
 
 
 def load_or_create(path: Path) -> Dict[str, Any]:
     if not path.exists():
+        logger.info(f"Config not found, creating default at {path}")
         write_config(path, DEFAULT_CONFIG)
         return deepcopy(DEFAULT_CONFIG)
 
@@ -17,8 +22,8 @@ def load_or_create(path: Path) -> Dict[str, Any]:
         with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
     except Exception as e:
-        print(f"[Config] Failed to load config: {e}")
-        print("[Config] Using in-memory defaults ONLY")
+        logger.error(f"[Config] Failed to load config: {e}")
+        logger.warning("[Config] Using in-memory defaults ONLY")
         return deepcopy(DEFAULT_CONFIG)
 
     merged = merge_defaults(data)
@@ -30,8 +35,9 @@ def write_config(path: Path, data: Dict[str, Any]) -> None:
     try:
         with path.open("w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
+        logger.debug(f"Config written to {path}")
     except Exception as e:
-        print(f"[Config] Failed to write config: {e}")
+        logger.error(f"Failed to write config: {e}", exc_info=True)
 
 
 def merge_defaults(data: Dict[str, Any]) -> Dict[str, Any]:

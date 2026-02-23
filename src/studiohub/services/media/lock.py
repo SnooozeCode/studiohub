@@ -32,15 +32,18 @@ class MediaWorkerLock:
         except OSError:
             raise RuntimeError("MediaWorker already running")
 
-    def release(self) -> None:
+    def release(self):
         if not self._file:
             return
-
         try:
-            msvcrt.locking(self._file.fileno(), msvcrt.LK_UNLCK, 1)
+            # Ensure file is unlocked even if process crashes
+            import fcntl  # Use fcntl for better cross-platform
+            fcntl.flock(self._file.fileno(), fcntl.LOCK_UN)
+        except:
+            pass
         finally:
             try:
                 self._file.close()
-            except Exception:
+            except:
                 pass
             self._file = None

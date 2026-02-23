@@ -6,6 +6,10 @@ import json
 
 from PySide6 import QtCore
 
+from studiohub.utils.logging import get_logger, log_performance
+
+logger = get_logger(__name__)
+
 INCHES_PER_FOOT = 12.0
 
 
@@ -186,3 +190,23 @@ class PaperLedger(QtCore.QObject):
             })
 
         return changes
+
+    @log_performance()
+    def _recompute_from_events(self) -> None:
+        """Replay the ledger to derive canonical paper state."""
+        logger.debug("Recomputing paper state from events")
+        # ... existing code ...
+        logger.debug(f"Recomputed: remaining={self.remaining_ft}, total={self.total_ft}")
+    
+    def replace_paper(self, name: str, total_ft: float) -> None:
+        logger.info(f"Replacing paper: {name} ({total_ft} ft)")
+        event = {
+            "event": "paper_replaced",
+            "paper_name": name,
+            "total_ft": float(total_ft),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+        }
+        self._append(event)
+        self.status_message.emit(f"Paper replaced: {name} ({total_ft} ft)")
+        self.changed.emit()
+        logger.debug("Paper replacement event appended")

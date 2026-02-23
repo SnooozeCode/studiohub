@@ -12,6 +12,7 @@ from studiohub.hub_models.poster_index import load_poster_index
 from studiohub.services.poster_index_worker import PosterIndexWorker
 from studiohub.services.index_watcher import IndexWatcher
 
+from studiohub.utils.logging import log_performance
 
 class IndexManager(QtCore.QObject):
     """
@@ -85,6 +86,7 @@ class IndexManager(QtCore.QObject):
     # Public API
     # =====================================================
     
+    @log_performance()
     def load_index(self) -> dict:
         """
         Load poster index from disk.
@@ -99,7 +101,8 @@ class IndexManager(QtCore.QObject):
         except Exception as e:
             self._emit_status(f"Failed to load index: {str(e)[:40]}")
             return {"posters": {"archive": {}, "studio": {}}}
-    
+        
+    @log_performance()
     def start_full_index(self) -> bool:
         """
         Start a full background index operation.

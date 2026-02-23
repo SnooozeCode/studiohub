@@ -19,9 +19,10 @@ from studiohub.ui.dashboard.panels.dashboard_panels import (
     OpenPrintLogPanel,
 )
 from studiohub.ui.dashboard.panels.studio_mood import StudioMoodPanel
-
+from studiohub.utils.logging import get_logger
 from studiohub.style.typography.rules import apply_typography
 
+logger = get_logger(__name__)
 class DashboardView(QWidget):
     """
     The main dashboard view. It now receives a DashboardNotesStore
@@ -177,7 +178,7 @@ class DashboardView(QWidget):
             self.studio_mood_panel = real_panel
             
         except Exception as e:
-            print(f"[Dashboard] Failed to initialize Studio Mood panel: {e}")
+            self._logger.error(f"Failed to initialize Studio Mood panel: {e}", exc_info=True)
             import traceback
             traceback.print_exc()
 

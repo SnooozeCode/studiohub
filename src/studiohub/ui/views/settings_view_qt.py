@@ -15,6 +15,9 @@ from studiohub.style.utils.repolish import repolish
 from studiohub.ui.dialogs.replace_paper import ReplacePaperDialog
 from studiohub.ui.icons import render_svg
 
+from studiohub.ui.views.log_viewer import LogViewer
+from studiohub.config.paths import get_appdata_root
+
 # =====================================================
 # Settings View
 # =====================================================
@@ -135,6 +138,7 @@ class SettingsViewQt(QtWidgets.QFrame):
 
         self.section_printing = self._build_section_printing()
         self.section_operations = self._build_section_operations()
+        self.section_debug = self._build_section_debug()
 
         # =================================================
         # FOOTER BUTTONS
@@ -206,6 +210,7 @@ class SettingsViewQt(QtWidgets.QFrame):
             self.section_appearance,
             self.section_printing,
             self.section_operations,
+            self.section_debug,
         ]
 
         SECTION_GAP = 48
@@ -1212,3 +1217,68 @@ class SettingsViewQt(QtWidgets.QFrame):
             "ink_low_enabled",
             self._get_bool_segmented(self.seg_warn_ink),
         )
+
+    def _build_section_debug(self):
+        """Add debug section with log viewer button."""
+        self.btn_view_logs = QtWidgets.QPushButton("View Logs")
+        self.btn_view_logs.setObjectName("SegmentedButton")
+        apply_typography(self.btn_view_logs, "body")
+        self.btn_view_logs.setCursor(Qt.PointingHandCursor)
+        self.btn_view_logs.clicked.connect(self._open_log_viewer)
+        
+        self.btn_archive_logs = QtWidgets.QPushButton("Archive Logs")
+        self.btn_archive_logs.setObjectName("SegmentedButton")
+        apply_typography(self.btn_archive_logs, "body")
+        self.btn_archive_logs.setCursor(Qt.PointingHandCursor)
+        self.btn_archive_logs.clicked.connect(self._archive_old_logs)
+        
+        return self._settings_grid_section(
+            title="Debug",
+            description="Diagnostic tools and log management.",
+            rows=[
+                {
+                    "label": "View Logs",
+                    "subtitle": "Open log viewer to inspect application logs",
+                    "control": self.btn_view_logs,
+                },
+                {
+                    "label": "Archive Old Logs",
+                    "subtitle": "Compress logs older than 30 days",
+                    "control": self.btn_archive_logs,
+                },
+            ],
+        )
+    
+    def _open_log_viewer(self):
+        """Open the log viewer dialog."""
+        appdata_root = get_appdata_root()
+        dialog = LogViewer(appdata_root, self)
+        dialog.exec_()  # Modal dialog
+    
+    def _archive_old_logs(self):
+        """Archive old logs."""
+        from studiohub.utils.logging import archive_old_logs
+        appdata_root = get_appdata_root()
+        
+        # Show confirmation
+        reply = QtWidgets.QMessageBox.question(
+            self,
+            "Archive Logs",
+            "This will compress logs older than 30 days. Continue?",
+            QtWidgets.QMessageBox.Yes | QtWidgets.QMessageBox.No
+        )
+        
+        if reply == QtWidgets.QMessageBox.Yes:
+            try:
+                archive_old_logs(appdata_root)
+                QtWidgets.QMessageBox.information(
+                    self,
+                    "Success",
+                    "Old logs have been archived."
+                )
+            except Exception as e:
+                QtWidgets.QMessageBox.critical(
+                    self,
+                    "Error",
+                    f"Failed to archive logs: {e}"
+                )

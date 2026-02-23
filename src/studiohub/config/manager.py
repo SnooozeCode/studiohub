@@ -38,8 +38,13 @@ class ConfigManager:
         return self.data.get(section, {}).get(key, default)
 
     def set(self, section: str, key: str, value: Any) -> None:
-        self.data.setdefault(section, {})[key] = value
-        self.save()
+        """Validate critical paths before saving."""
+        if section == "paths" and key in ["archive_root", "studio_root", "runtime_root"]:
+            path = Path(value)
+            if not path.exists():
+                # Create a warning notification but don't block save
+                self._emit_warning(f"Path {value} does not exist")
+        super().set(section, key, value)
 
     # ---------------------------
     # Path helpers

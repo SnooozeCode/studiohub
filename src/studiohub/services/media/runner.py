@@ -11,7 +11,9 @@ from PySide6.QtCore import QObject, Signal, Qt
 from studiohub.config.manager import ConfigManager
 from studiohub.services.media.worker import MediaWorker
 from studiohub.services.media.lock import MediaWorkerLock
+from studiohub.utils.logging import get_logger
 
+logger = get_logger(__name__)
 
 class MediaWorkerRunner(QObject):
     """Runner for media worker with Qt signals for status."""
@@ -40,10 +42,10 @@ class MediaWorkerRunner(QObject):
         self.status_message.emit("Media worker thread started")
     
     def stop(self):
-        """Stop the media worker thread."""
         self._running = False
-        # Note: The thread is daemon, so it will exit when main thread exits
-    
+        if self._thread and self._thread.is_alive():
+            self._thread.join(timeout=2.0)
+        
     def _run_worker(self):
         """Run worker with automatic restart on crash."""
         media_dir = self._config.get_appdata_root() / "media"
@@ -70,13 +72,13 @@ class MediaWorkerRunner(QObject):
             except RuntimeError as e:
                 # Worker already running elsewhere
                 self._emit_status("Media worker already running")
-                print(f"[MediaWorker] Already running: {e}")
+                self._logger.warning(f"[MediaWorker] Already running: {e}")
                 break
                 
             except Exception as e:
                 msg = f"Media worker crashed (attempt {attempt + 1}/{max_retries})"
                 self._emit_status(msg)
-                print(f"[MediaWorker] {msg}: {e}")
+                self._logger.error(f"[MediaWorker] {msg}: {e}")
                 
                 if attempt < max_retries - 1 and self._running:
                     time.sleep(retry_delay)

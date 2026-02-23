@@ -26,7 +26,7 @@ from studiohub.ui.widgets.click_catcher import ClickCatcher
 from studiohub.ui.sidebar.sidebar import Sidebar
 
 from studiohub.services.notifications.notification_service import Notification, NotificationAction
-
+from studiohub.utils.logging import get_logger
 
 class MainWindow(QtWidgets.QMainWindow):
     """
@@ -48,6 +48,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._deps = DependencyContainer.create(parent=self)
 
         self.config_manager = self._deps.config_manager
+
+        self._logger = get_logger(__name__, context={"window": "main"})
+        self._logger.info("Initializing MainWindow")
 
         # Initialize services
         self._index_manager = IndexManager(
@@ -86,6 +89,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Finalize startup
         self._finalize_startup()
+        self._logger.debug("MainWindow initialization complete")
     
     def _setup_window(self) -> None:
         """Configure window properties."""
@@ -179,10 +183,10 @@ class MainWindow(QtWidgets.QMainWindow):
             if hasattr(self._deps.paper_ledger, 'status_message'):
                 self._deps.paper_ledger.status_message.connect(self._safe_emit_status)
                 
-            print("[MainWindow] Connected model status signals")
+            self._logger.info("Connected model status signals")
             
         except Exception as e:
-            print(f"[WARN] Failed to connect model status signals: {e}")
+            self._logger.warning(f"Failed to connect model status signals: {e}")
     
     def _connect_status_to_notifications(self):
         """Convert status messages to notifications (errors, warnings, successes)."""
@@ -543,6 +547,17 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Start new one
         self._start_media_worker()
+
+    def closeEvent(self, event):
+        self._logger.info("Application shutting down")
+        if hasattr(self, '_media_runner'):
+            self._media_runner.stop()
+        # Stop index worker threads
+        self._index_manager.shutdown()
+        self._logger.debug("Cleanup complete")
+        event.accept()
+    
+    
     
     # =====================================================
     # UI Creation
