@@ -7,6 +7,7 @@ import json
 from PySide6 import QtCore
 
 from studiohub.utils.logging import get_logger, log_performance
+from studiohub.utils.file_utils import atomic_write, FileLock, safe_read_json
 
 logger = get_logger(__name__)
 
@@ -17,9 +18,8 @@ class PaperLedger(QtCore.QObject):
     """
     Canonical authority for paper state.
 
-    Backed by an append-only JSONL ledger.
-    All derived state (remaining_ft, totals) is recomputed
-    by replaying events to guarantee cross-machine consistency.
+    Backed by an append-only JSONL ledger with atomic writes and file locking
+    to prevent corruption from concurrent access.
     """
 
     changed = QtCore.Signal()
@@ -30,6 +30,7 @@ class PaperLedger(QtCore.QObject):
 
         self.log_path = runtime_root / "logs" / "paper_ledger.jsonl"
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
+        self.lock_path = self.log_path.with_suffix('.lock')
 
         # Derived state (never persisted)
         self.paper_name: str | None = None
@@ -47,28 +48,68 @@ class PaperLedger(QtCore.QObject):
     # -------------------------------------------------
 
     def _load(self) -> None:
+        """Load events from disk with error recovery."""
         self._events.clear()
 
         if not self.log_path.exists():
             return
 
-        for line in self.log_path.read_text(encoding="utf-8").splitlines():
+        try:
+            # Read with file lock to prevent reading during write
+            with FileLock(self.lock_path, timeout=2.0):
+                content = self.log_path.read_text(encoding="utf-8")
+        except TimeoutError:
+            logger.warning("Could not acquire lock for reading, proceeding without lock")
+            content = self.log_path.read_text(encoding="utf-8")
+        except Exception as e:
+            logger.error(f"Failed to read ledger: {e}")
+            return
+
+        # Parse lines, skipping invalid JSON
+        valid_lines = 0
+        for line_num, line in enumerate(content.splitlines(), 1):
+            if not line.strip():
+                continue
             try:
                 event = json.loads(line)
-            except Exception:
+                self._events.append(event)
+                valid_lines += 1
+            except json.JSONDecodeError as e:
+                logger.warning(f"Skipping invalid JSON at line {line_num}: {e}")
                 continue
-            self._events.append(event)
 
+        logger.debug(f"Loaded {valid_lines} events from ledger")
         self._recompute_from_events()
 
     def _append(self, event: dict) -> None:
+        """Append event atomically with file locking."""
         self._events.append(event)
-        with self.log_path.open("a", encoding="utf-8") as f:
-            f.write(json.dumps(event) + "\n")
 
-        # Recompute after every append to keep in-memory state honest
-        self._recompute_from_events()
+        try:
+            # Use file lock to prevent concurrent writes
+            with FileLock(self.lock_path, timeout=5.0):
+                # Read existing content
+                existing = ""
+                if self.log_path.exists():
+                    existing = self.log_path.read_text(encoding='utf-8')
+                
+                # Append new event
+                new_content = existing + json.dumps(event) + "\n"
+                
+                # Write atomically (create backup of entire file)
+                atomic_write(self.log_path, new_content, make_backup=True)
+                
+        except TimeoutError:
+            logger.error(f"Could not acquire lock for {self.log_path} after 5 seconds")
+            # Still recompute from in-memory events
+        except Exception as e:
+            logger.error(f"Failed to append to ledger: {e}")
+            # Don't raise - we still have the event in memory
+        finally:
+            # Recompute after every append to keep in-memory state honest
+            self._recompute_from_events()
 
+    @log_performance()
     def _recompute_from_events(self) -> None:
         """
         Replay the ledger to derive canonical paper state.
@@ -111,6 +152,7 @@ class PaperLedger(QtCore.QObject):
     # -------------------------------------------------
 
     def replace_paper(self, name: str, total_ft: float) -> None:
+        logger.info(f"Replacing paper: {name} ({total_ft} ft)")
         event = {
             "event": "paper_replaced",
             "paper_name": name,
@@ -121,8 +163,8 @@ class PaperLedger(QtCore.QObject):
         
         # Emit status message for notification system
         self.status_message.emit(f"Paper replaced: {name} ({total_ft} ft)")
-        
         self.changed.emit()
+        logger.debug("Paper replacement event appended")
 
     def commit_print(self, job_id: str, length_in: float) -> None:
         event = {
@@ -191,22 +233,42 @@ class PaperLedger(QtCore.QObject):
 
         return changes
 
-    @log_performance()
-    def _recompute_from_events(self) -> None:
-        """Replay the ledger to derive canonical paper state."""
-        logger.debug("Recomputing paper state from events")
-        # ... existing code ...
-        logger.debug(f"Recomputed: remaining={self.remaining_ft}, total={self.total_ft}")
-    
-    def replace_paper(self, name: str, total_ft: float) -> None:
-        logger.info(f"Replacing paper: {name} ({total_ft} ft)")
-        event = {
-            "event": "paper_replaced",
-            "paper_name": name,
-            "total_ft": float(total_ft),
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-        self._append(event)
-        self.status_message.emit(f"Paper replaced: {name} ({total_ft} ft)")
-        self.changed.emit()
-        logger.debug("Paper replacement event appended")
+    # -------------------------------------------------
+    # Recovery Methods
+    # -------------------------------------------------
+
+    def verify_integrity(self) -> bool:
+        """
+        Verify that the on-disk ledger matches in-memory state.
+        Returns True if consistent, False otherwise.
+        """
+        if not self.log_path.exists():
+            return len(self._events) == 0
+
+        try:
+            with FileLock(self.lock_path, timeout=2.0):
+                content = self.log_path.read_text(encoding='utf-8')
+            
+            disk_events = []
+            for line in content.splitlines():
+                if not line.strip():
+                    continue
+                try:
+                    disk_events.append(json.loads(line))
+                except json.JSONDecodeError:
+                    return False
+            
+            # Compare number of events (don't compare content to avoid race)
+            return len(disk_events) == len(self._events)
+            
+        except Exception as e:
+            logger.error(f"Integrity check failed: {e}")
+            return False
+
+    def recover_from_backup(self) -> bool:
+        """
+        Attempt to recover the ledger from the most recent backup.
+        Returns True if recovery succeeded.
+        """
+        from studiohub.utils.recovery import recover_from_backup
+        return recover_from_backup(self.log_path)

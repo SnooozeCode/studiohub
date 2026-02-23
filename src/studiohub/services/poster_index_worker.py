@@ -11,8 +11,10 @@ from PySide6 import QtCore
 
 from studiohub.hub_models.poster_index_builder import scan_single_poster
 from studiohub.utils.logging import get_logger
+from studiohub.utils.file_utils import atomic_write_json, safe_read_json, FileLock
 
 logger = get_logger(__name__)
+
 
 class PosterIndexWorker(QtCore.QObject):
     finished = QtCore.Signal(int, str)
@@ -27,6 +29,7 @@ class PosterIndexWorker(QtCore.QObject):
         # Authoritative paths (ONE source of truth)
         self.index_path = self.config_manager.get_poster_index_path()
         self.mtime_cache_path = self.index_path.with_name("poster_mtime_cache.json")
+        self.lock_path = self.index_path.with_suffix('.lock')
 
         self.index: Dict | None = None
         self.mtime_cache = self._load_mtime_cache()
@@ -72,7 +75,6 @@ class PosterIndexWorker(QtCore.QObject):
     # -------------------------------------------------
 
     def reindex_poster_by_path(self, poster_path: Path) -> bool:
-
         try:
             if self.index is None:
                 self._load_index()
@@ -80,8 +82,6 @@ class PosterIndexWorker(QtCore.QObject):
             key = poster_path.name
             poster_mtime = self._poster_fingerprint(poster_path)
             path_key = str(poster_path)
-
-            
 
             if self.mtime_cache["dirs"].get(path_key) == poster_mtime:
                 return False  # unchanged
@@ -120,7 +120,7 @@ class PosterIndexWorker(QtCore.QObject):
             max_ns = max(max_ns, poster_path.stat().st_mtime_ns)
         except Exception as e:
             self.status.emit(f"Warning: Could not read mtime for {poster_path.name}")
-            self._logger.debug(f"[IndexWorker] Failed to get mtime for {poster_path}: {e}")
+            logger.debug(f"Failed to get mtime for {poster_path}: {e}")
         
         for p in poster_path.rglob("*"):
             if p.is_file():
@@ -129,8 +129,9 @@ class PosterIndexWorker(QtCore.QObject):
                     max_ns = max(max_ns, p.stat().st_mtime_ns)
                 except Exception as e:
                     # Don't spam status for every file
-                    self._logger.warning(f"[IndexWorker] Failed to get mtime for {p}: {e}")
-
+                    logger.warning(f"Failed to get mtime for {p}: {e}")
+        
+        return max_ns
 
     def _scan_root(self, root: Path) -> Dict[str, dict]:
         out = {}
@@ -154,30 +155,81 @@ class PosterIndexWorker(QtCore.QObject):
             return "studio"
         return None
 
-    def _load_index(self):
-        if self.index_path.exists():
-            self.index = json.loads(self.index_path.read_text(encoding="utf-8"))
-        else:
-            self.index = {
+    def _load_index(self) -> None:
+        """
+        Load index safely with fallback to defaults.
+        Uses safe_read_json for automatic backup fallback.
+        """
+        self.index = safe_read_json(
+            self.index_path,
+            default={
                 "cache_version": 2,
                 "generated_at": None,
-                "posters": {"archive": {}, "studio": {}},
+                "posters": {"archive": {}, "studio": {}}
             }
+        )
+        logger.debug(f"Loaded index with {len(self.index.get('posters', {}))} posters")
 
-    def _save_index(self):
-        self._logger.info("[IndexWorker] Updated at:", self.index_path)
-
-        tmp = self.index_path.with_suffix(".tmp")
-        tmp.write_text(json.dumps(self.index, indent=2), encoding="utf-8")
-        tmp.replace(self.index_path)
+    def _save_index(self) -> None:
+        """Save index atomically with file locking."""
+        logger.info(f"Saving index to {self.index_path}")
+        
+        try:
+            # Use file lock to prevent concurrent writes
+            with FileLock(self.lock_path, timeout=5.0):
+                # Write atomically with backup
+                atomic_write_json(self.index_path, self.index, make_backup=True)
+                
+        except TimeoutError:
+            logger.error(f"Could not acquire lock for {self.index_path} after 5 seconds")
+            # Fall back to atomic write without lock (still safe, but might race)
+            atomic_write_json(self.index_path, self.index, make_backup=True)
+        except Exception as e:
+            logger.error(f"Failed to save index: {e}")
+            raise
 
     def _load_mtime_cache(self) -> dict:
-        if self.mtime_cache_path.exists():
-            return json.loads(self.mtime_cache_path.read_text(encoding="utf-8"))
-        return {"version": 1, "dirs": {}}
-
-    def _save_mtime_cache(self):
-        self.mtime_cache_path.write_text(
-            json.dumps(self.mtime_cache, indent=2),
-            encoding="utf-8",
+        """
+        Load mtime cache safely.
+        Returns default cache if file doesn't exist or is corrupted.
+        """
+        return safe_read_json(
+            self.mtime_cache_path,
+            default={"version": 1, "dirs": {}}
         )
+
+    def _save_mtime_cache(self) -> None:
+        """Save mtime cache atomically."""
+        try:
+            atomic_write_json(self.mtime_cache_path, self.mtime_cache, make_backup=False)
+            logger.debug(f"Saved mtime cache with {len(self.mtime_cache['dirs'])} entries")
+        except Exception as e:
+            logger.error(f"Failed to save mtime cache: {e}")
+            # Non-critical, continue
+
+    # -------------------------------------------------
+    # Recovery Methods
+    # -------------------------------------------------
+
+    def verify_index_integrity(self) -> bool:
+        """
+        Verify that the index file is valid JSON.
+        Returns True if valid, False otherwise.
+        """
+        if not self.index_path.exists():
+            return True
+        
+        try:
+            data = safe_read_json(self.index_path)
+            return data is not None and "cache_version" in data
+        except Exception as e:
+            logger.error(f"Index integrity check failed: {e}")
+            return False
+
+    def recover_index_from_backup(self) -> bool:
+        """
+        Attempt to recover the index from the most recent backup.
+        Returns True if recovery succeeded.
+        """
+        from studiohub.utils.recovery import recover_from_backup
+        return recover_from_backup(self.index_path)

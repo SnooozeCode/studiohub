@@ -7,27 +7,26 @@ from copy import deepcopy
 
 from .defaults import DEFAULT_CONFIG
 from studiohub.utils.logging import get_logger
+from studiohub.utils.file_utils import atomic_write_json, safe_read_json
 
 logger = get_logger(__name__)
-
 
 
 def load_or_create(path: Path) -> Dict[str, Any]:
     if not path.exists():
         logger.info(f"Config not found, creating default at {path}")
-        write_config(path, DEFAULT_CONFIG)
+        atomic_write_json(path, DEFAULT_CONFIG, make_backup=False)
         return deepcopy(DEFAULT_CONFIG)
-
-    try:
-        with path.open("r", encoding="utf-8") as f:
-            data = json.load(f)
-    except Exception as e:
-        logger.error(f"[Config] Failed to load config: {e}")
-        logger.warning("[Config] Using in-memory defaults ONLY")
+    
+    # Use safe read with fallback to defaults
+    data = safe_read_json(path, default=None)
+    
+    if data is None:
+        logger.error(f"Failed to load config from {path}, using defaults")
         return deepcopy(DEFAULT_CONFIG)
-
+    
     merged = merge_defaults(data)
-    write_config(path, merged)
+    atomic_write_json(path, merged, make_backup=False)  # Rewrite with merged defaults
     return merged
 
 
