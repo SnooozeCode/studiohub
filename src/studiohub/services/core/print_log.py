@@ -1,3 +1,5 @@
+# studiohub/services/core/print_log.py
+
 """
 Print log management for StudioHub.
 
@@ -15,11 +17,14 @@ import socket
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Dict, Any, Optional, Tuple, Iterable
+from typing import List, Dict, Any, Optional, Tuple, Iterable, TYPE_CHECKING
 
 from PySide6 import QtCore
 
 from studiohub.utils import get_logger, log_performance, atomic_write, FileLock
+
+if TYPE_CHECKING:
+    from studiohub.services.dashboard.service import DashboardService
 
 logger = get_logger(__name__)
 
@@ -94,11 +99,39 @@ class PrintLogState(QtCore.QObject):
     changed = QtCore.Signal()
     error = QtCore.Signal(str)
 
-    def __init__(self, log_path: Path, parent=None) -> None:
+    def __init__(
+        self, 
+        log_path: Path, 
+        dashboard_service: Optional[DashboardService] = None,  # NEW
+        parent=None
+    ) -> None:
         super().__init__(parent)
         self._path = Path(log_path)
         self._jobs: List[PrintJobRecord] = []
         self._writer = PrintLogWriter(log_path)
+        self._dashboard_service = dashboard_service
+        
+    def set_dashboard_service(self, dashboard_service: DashboardService) -> None:
+        """
+        Set the dashboard service reference for cache invalidation.
+        Called after dashboard service is created.
+        """
+        self._dashboard_service = dashboard_service
+        logger.debug("Dashboard service connected to print log state")
+
+
+    # -------------------------------------------------
+    # Cache invalidation
+    # -------------------------------------------------
+
+    def _invalidate_dashboard_cache(self) -> None:
+        """Invalidate dashboard cache if available."""
+        if self._dashboard_service is not None:
+            try:
+                self._dashboard_service.invalidate_cache()
+                logger.debug("Dashboard cache invalidated after print log change")
+            except Exception as e:
+                logger.warning(f"Failed to invalidate dashboard cache: {e}")
 
     # -------------------------------------------------
     # Lifecycle
@@ -225,6 +258,7 @@ class PrintLogState(QtCore.QObject):
         try:
             self._writer.append(record)
             self.load()  # Reload to incorporate the new event
+            self._invalidate_dashboard_cache()  # NEW
         except Exception as exc:
             self.error.emit(f"Failed to record print failure: {exc}")
 
@@ -254,6 +288,7 @@ class PrintLogState(QtCore.QObject):
         try:
             self._writer.append(record)
             self.load()  # Reload to incorporate the new event
+            self._invalidate_dashboard_cache()  # NEW
         except Exception as exc:
             self.error.emit(f"Failed to record reprint event: {exc}")
 

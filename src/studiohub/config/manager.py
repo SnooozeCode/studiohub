@@ -13,7 +13,7 @@ from studiohub.config.paths import (  # This still works
     get_appdata_root,
 )
 from studiohub.config.validation import assert_runtime_not_in_studio
-
+from studiohub.utils import get_logger
 
 class ConfigManager:
     """
@@ -45,7 +45,11 @@ class ConfigManager:
             if not path.exists():
                 # Create a warning notification but don't block save
                 self._emit_warning(f"Path {value} does not exist")
-        super().set(section, key, value)
+        
+        # FIX: This should be self.data[section][key] = value
+        if section not in self.data:
+            self.data[section] = {}
+        self.data[section][key] = value
 
     # ---------------------------
     # Path helpers
@@ -100,6 +104,11 @@ class ConfigManager:
 
     def assert_runtime_not_in_studio(self) -> None:
         assert_runtime_not_in_studio(self.data)
+
+    def _emit_warning(self, message: str) -> None:
+        """Emit warning for UI consumption."""
+        # This could connect to a signal or just log
+        get_logger.warning(message)
 
     # ---------------------------
     # Legacy path passthroughs

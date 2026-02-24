@@ -6,7 +6,13 @@ import json
 
 from PySide6 import QtCore
 
-from studiohub.utils import get_logger, log_performance, atomic_write, FileLock
+from studiohub.utils import (
+    get_logger,
+    log_performance,
+    atomic_write,
+    FileLock,
+    recover_from_backup,
+)
 
 logger = get_logger(__name__)
 
@@ -269,5 +275,4 @@ class PaperLedger(QtCore.QObject):
         Attempt to recover the ledger from the most recent backup.
         Returns True if recovery succeeded.
         """
-        from studiohub.utils.recovery import recover_from_backup
         return recover_from_backup(self.log_path)

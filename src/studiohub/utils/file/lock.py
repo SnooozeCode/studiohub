@@ -1,10 +1,12 @@
 # studiohub/utils/file/lock.py
+
 """File-based locking for cross-process synchronization."""
 
 from __future__ import annotations
 
 import os
 import time
+import psutil
 from pathlib import Path
 
 
@@ -17,9 +19,10 @@ class FileLock:
             # Critical section
     """
     
-    def __init__(self, lock_path: Path, timeout: float = 10.0):
+    def __init__(self, lock_path: Path, timeout: float = 10.0, stale_timeout: float = 5.0):
         self.lock_path = Path(lock_path)
         self.timeout = timeout
+        self.stale_timeout = stale_timeout  # Time after which a lock is considered stale
         self._fd = None
     
     def __enter__(self):
@@ -32,16 +35,44 @@ class FileLock:
                     str(self.lock_path),
                     os.O_CREAT | os.O_EXCL | os.O_WRONLY
                 )
+                # Write PID to lock file for debugging
+                os.write(self._fd, str(os.getpid()).encode())
+                os.fsync(self._fd)
                 break
             except FileExistsError:
+                # Check if lock is stale
+                if self._is_lock_stale():
+                    # Remove stale lock and try again
+                    try:
+                        self.lock_path.unlink()
+                        continue
+                    except Exception:
+                        pass
+                
                 if time.time() - start_time > self.timeout:
                     raise TimeoutError(f"Could not acquire lock: {self.lock_path}")
                 time.sleep(0.1)
         
-        os.write(self._fd, str(os.getpid()).encode())
-        os.fsync(self._fd)
-        
         return self
+    
+    def _is_lock_stale(self) -> bool:
+        """Check if the existing lock is stale."""
+        try:
+            # Read PID from lock file
+            content = self.lock_path.read_text().strip()
+            if not content:
+                return True
+            
+            pid = int(content)
+            
+            # Check if process is still running
+            return not psutil.pid_exists(pid)
+            
+        except (ValueError, IOError, OSError, psutil.NoSuchProcess):
+            # If we can't read the file or the PID doesn't exist, it's stale
+            return True
+        except Exception:
+            return False
     
     def __exit__(self, *args):
         if self._fd is not None:

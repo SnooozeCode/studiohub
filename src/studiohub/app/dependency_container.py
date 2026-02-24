@@ -34,6 +34,7 @@ from studiohub.services.index import PosterIndexState
 from studiohub.services.dashboard.service import DashboardService
 from studiohub.services.notifications.notification_service import NotificationService
 from studiohub.services.media.service_qt import MediaServiceQt
+from studiohub.services.index import IndexManager
 
 # --------------------------------------------------
 # Qt-facing models
@@ -73,6 +74,7 @@ class Dependencies:
     poster_index_state: PosterIndexState
     print_log_state: PrintLogState
     dashboard_service: DashboardService
+    index_manager: IndexManager  # ADD THIS
     notification_service: NotificationService
     notes_store: DashboardNotesStore
     
@@ -129,49 +131,66 @@ class DependencyContainer:
         runtime_root.mkdir(parents=True, exist_ok=True)
 
         # --------------------------------------------------
-        # Core services
+        # Core services (order matters!)
         # --------------------------------------------------
 
+        # 1. Paper ledger (no dependencies)
         paper_ledger = PaperLedger(runtime_root)
 
+        # 2. Poster index state (no dependencies)
         poster_index_state = PosterIndexState(parent)
         poster_index_state.load(config_manager.get_poster_index_path())
 
+        # 3. Print log state (needs dashboard service, but we create it first without dashboard_service)
+        #    We'll update it after dashboard service is created
         print_log_state = PrintLogState(
             log_path=config_manager.get_print_log_path(),
+            dashboard_service=None,  # Will set after dashboard service is created
             parent=parent,
         )
 
-        # Print log may not exist during first launch — never crash
+        # Load print log (may fail on first launch)
         try:
             print_log_state.load()
         except Exception as e:
-            # Emit to status bar via parent if available
-            if parent and hasattr(parent, '_safe_emit_status'):  # Correct
+            if parent and hasattr(parent, '_safe_emit_status'):
                 parent._safe_emit_status(f"Warning: Failed to load print log - {str(e)[:50]}")
             else:
                 print(f"[WARN] Failed to load print log: {e}")
 
+        # 4. Notes store (needs config)
         notes_store = DashboardNotesStore(
             config_manager=config_manager
         )
         
+        # 5. Dashboard service (needs everything)
         dashboard_service = DashboardService(
             config_manager=config_manager,
             paper_ledger=paper_ledger,
             poster_index_state=poster_index_state,
-            print_log_state=print_log_state,
+            print_log_state=print_log_state,  # Pass the print log state
             print_log_path=config_manager.get_print_log_path(),
         )
 
+        # 6. Now update print log state with dashboard service reference
+        print_log_state.set_dashboard_service(dashboard_service)
+
+        # 7. Index manager (needs dashboard service)
+        index_manager = IndexManager(
+            config_manager=config_manager,
+            status_callback=parent._safe_emit_status if parent else None,
+            dashboard_service=dashboard_service,
+            parent=parent,
+        )
+
+        # 8. Notification service (no dependencies)
         notification_service = NotificationService()
         
-        # ===== NEW: Media service =====
+        # 9. Media service (needs config)
         media_service = MediaServiceQt(
             config=config_manager,
             parent=parent
         )
-        # ===============================
 
         # --------------------------------------------------
         # Qt-facing models
@@ -213,9 +232,10 @@ class DependencyContainer:
             poster_index_state=poster_index_state,
             print_log_state=print_log_state,
             dashboard_service=dashboard_service,
+            index_manager=index_manager,
             notes_store=notes_store,
             notification_service=notification_service,
-            media_service=media_service,  # NEW
+            media_service=media_service,
             missing_model=missing_model,
             print_manager_model=print_manager_model,
             mockup_model=mockup_model,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Optional, Callable
+from typing import Optional, Callable, TYPE_CHECKING
 
 from PySide6 import QtCore
 
@@ -15,7 +15,12 @@ from studiohub.services.index.worker import PosterIndexWorker
 from studiohub.services.index.watcher import IndexWatcher
 from studiohub.services.index.log import append_index_log
 
-from studiohub.utils.logging.decorators import log_performance
+from studiohub.utils import log_performance, get_logger
+
+if TYPE_CHECKING:
+    from studiohub.services.dashboard.service import DashboardService
+
+logger = get_logger(__name__)
 
 class IndexManager(QtCore.QObject):
     """
@@ -37,6 +42,7 @@ class IndexManager(QtCore.QObject):
         self,
         config_manager: ConfigManager,
         status_callback: Optional[Callable[[str], None]] = None,
+        dashboard_service: Optional[DashboardService] = None,  # NEW
         parent: QtCore.QObject | None = None,
     ):
         """
@@ -45,12 +51,14 @@ class IndexManager(QtCore.QObject):
         Args:
             config_manager: Configuration manager
             status_callback: Optional callback for status messages
+            dashboard_service: Optional dashboard service for cache invalidation
             parent: Parent Qt object
         """
         super().__init__(parent)
         
         self._config = config_manager
         self._status_callback = status_callback
+        self._dashboard_service = dashboard_service  # NEW
         self._index_running = False
         self._recently_indexed: dict[Path, float] = {}
         
@@ -84,6 +92,15 @@ class IndexManager(QtCore.QObject):
                 self._status_callback(message)
             except Exception:
                 pass
+    
+    def _invalidate_dashboard_cache(self) -> None:
+        """Invalidate dashboard cache if dashboard service is available."""
+        if self._dashboard_service is not None:
+            try:
+                self._dashboard_service.invalidate_cache()
+                logger.debug("Dashboard cache invalidated after index change")
+            except Exception as e:
+                logger.warning(f"Failed to invalidate dashboard cache: {e}")
     
     # =====================================================
     # Public API
@@ -249,6 +266,10 @@ class IndexManager(QtCore.QObject):
             duration_ms, status = self._pending_result
             self.index_finished.emit(duration_ms, status)
             self._emit_status(f"Index finished in {duration_ms}ms")
+            
+            # Invalidate dashboard cache on successful index
+            self._invalidate_dashboard_cache()
+            
             self._pending_result = None
     
     @QtCore.Slot(str)
@@ -284,3 +305,6 @@ class IndexManager(QtCore.QObject):
         """
         self.poster_updated.emit(poster_key)
         self._emit_status(f"Poster updated: {poster_key}")
+        
+        # Invalidate dashboard cache on poster update
+        self._invalidate_dashboard_cache()

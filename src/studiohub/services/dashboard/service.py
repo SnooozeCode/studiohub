@@ -1,8 +1,11 @@
+# studiohub/services/dashboard/service.py
+
 from __future__ import annotations
 
 import json
 import os
 import re
+import time  # ADD THIS IMPORT
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -95,6 +98,13 @@ class DashboardService:
         self._print_log_cache_mtime: float | None = None
 
         self._filename_to_source: dict[str, str] = {}  # for print fallback inference
+        
+        # ===== NEW: Snapshot cache =====
+        self._snapshot_cache: DashboardSnapshot | None = None
+        self._cache_timestamp: float = 0
+        self._cache_ttl: float = 2.0  # Cache for 2 seconds
+        self._cache_enabled: bool = True  # Can be disabled for testing
+        # ===============================
 
     # --------------------------------------------------------
     # Public
@@ -102,9 +112,17 @@ class DashboardService:
 
     def get_snapshot(self) -> DashboardSnapshot:
         """
-        Build and return a complete dashboard snapshot.
+        Build and return a complete dashboard snapshot with caching.
+        
+        Returns cached snapshot if still valid (within TTL).
         """
+        # Return cached snapshot if enabled and valid
+        if self._cache_enabled and self._snapshot_cache is not None:
+            now = time.time()
+            if now - self._cache_timestamp < self._cache_ttl:
+                return self._snapshot_cache
 
+        # Build new snapshot
         archive, studio = self._build_completeness()
         monthly_print_count = self._monthly_print_count()
 
@@ -114,25 +132,53 @@ class DashboardService:
             monthly=monthly_print_count,
         )
 
-        # Get paper data from paper ledger (CORRECT)
-        paper_data = self._build_paper()  # This uses self._paper_ledger internally
+        # Get paper data from paper ledger
+        paper_data = self._build_paper()
         
-        # Get ink data from ink builder (CORRECT)
-        ink_data = self._build_ink()      # This uses config + print logs
+        # Get ink data from ink builder
+        ink_data = self._build_ink()
         
-        return DashboardSnapshot(
+        snapshot = DashboardSnapshot(
             archive=archive,
             studio=studio,
             studio_mood=studio_mood,
             monthly_print_count=monthly_print_count,
             recent_prints=self._build_recent_prints(),
             monthly_costs=self._build_monthly_costs(),
-            paper=paper_data,   # NOW POPULATED
-            ink=ink_data,       # NOW POPULATED
+            paper=paper_data,
+            ink=ink_data,
             revenue=None,
             notes=None
         )
         
+        # Update cache
+        if self._cache_enabled:
+            self._snapshot_cache = snapshot
+            self._cache_timestamp = time.time()
+        
+        return snapshot
+
+    def invalidate_cache(self) -> None:
+        """
+        Force cache refresh on next get_snapshot() call.
+        Call this when underlying data changes (e.g., new print job).
+        """
+        self._snapshot_cache = None
+        self._cache_timestamp = 0
+
+    def set_cache_ttl(self, ttl_seconds: float) -> None:
+        """
+        Set cache time-to-live in seconds.
+        
+        Args:
+            ttl_seconds: Cache duration in seconds (0 to disable)
+        """
+        self._cache_ttl = max(0.0, ttl_seconds)
+        if ttl_seconds <= 0:
+            self._cache_enabled = False
+            self.invalidate_cache()
+        else:
+            self._cache_enabled = True
 
     # ---------------------------------------------------------
     # Index completeness (from poster index state snapshot)
