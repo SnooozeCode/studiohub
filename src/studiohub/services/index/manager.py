@@ -8,14 +8,14 @@ from typing import Optional, Callable
 
 from PySide6 import QtCore
 
-from studiohub.config_manager import ConfigManager
+from studiohub.config.manager import ConfigManager
 from studiohub.models.poster_index import load_poster_index
 
 from studiohub.services.index.worker import PosterIndexWorker
 from studiohub.services.index.watcher import IndexWatcher
 from studiohub.services.index.log import append_index_log
 
-from studiohub.utils.logging import log_performance
+from studiohub.utils.logging.decorators import log_performance
 
 class IndexManager(QtCore.QObject):
     """

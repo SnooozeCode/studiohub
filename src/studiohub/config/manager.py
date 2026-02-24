@@ -1,3 +1,4 @@
+# studiohub/config/manager.py
 from __future__ import annotations
 
 from pathlib import Path
@@ -5,7 +6,7 @@ from typing import Any
 
 from studiohub.config.schema import AppConfig
 from studiohub.config.io import load_or_create, write_config
-from studiohub.config.paths import (
+from studiohub.config.paths import (  # This still works
     get_config_path,
     get_local_cache_root,
     get_poster_index_path,

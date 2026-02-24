@@ -6,7 +6,7 @@ from typing import Callable
 
 from PySide6 import QtWidgets
 
-from studiohub.config_manager import ConfigManager
+from studiohub.config.manager import ConfigManager
 from studiohub.constants import REQUIRED_PATHS
 
 

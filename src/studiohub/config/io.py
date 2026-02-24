@@ -6,8 +6,9 @@ from typing import Dict, Any
 from copy import deepcopy
 
 from .defaults import DEFAULT_CONFIG
-from studiohub.utils.logging import get_logger
-from studiohub.utils.file_utils import atomic_write_json, safe_read_json
+
+from studiohub.utils import get_logger, atomic_write_json, safe_read_json
+
 
 logger = get_logger(__name__)
 

@@ -12,7 +12,8 @@ from studiohub.ui.layout.queue import QueueRowFactory
 from studiohub.style.typography.rules import apply_view_typography, apply_typography
 from PySide6.QtGui import QFont
 
-from studiohub.utils.logging import get_logger
+from studiohub.utils.logging.core import get_logger
+
 logger = get_logger(__name__)
 
 HEADER_HEIGHT = 40

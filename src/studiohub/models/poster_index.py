@@ -3,7 +3,9 @@ from __future__ import annotations
 from pathlib import Path
 import json
 
-from studiohub.utils.logging import get_logger
+from studiohub.utils.logging.core import get_logger
+from studiohub.utils.logging.decorators import log_performance
+
 logger = get_logger(__name__)
 
 def load_poster_index(path: str | Path) -> dict:

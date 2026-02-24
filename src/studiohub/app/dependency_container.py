@@ -20,7 +20,7 @@ from PySide6 import QtCore
 # Configuration
 # --------------------------------------------------
 
-from studiohub.config_manager import ConfigManager
+from studiohub.config.manager import ConfigManager
 from studiohub.models.print_job_config import PrintJobConfig
 
 # --------------------------------------------------

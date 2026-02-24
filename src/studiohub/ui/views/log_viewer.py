@@ -1,5 +1,5 @@
 # ui/views/log_viewer.py
-from studiohub.utils.logging import get_logger
+from studiohub.utils.logging.core import get_logger
 from PySide6 import QtWidgets, QtCore, QtGui
 from pathlib import Path
 

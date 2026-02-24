@@ -26,7 +26,9 @@ from studiohub.ui.widgets.click_catcher import ClickCatcher
 from studiohub.ui.sidebar.sidebar import Sidebar
 
 from studiohub.services.notifications.notification_service import Notification, NotificationAction
-from studiohub.utils.logging import get_logger
+
+from studiohub.utils.logging.core import get_logger
+from studiohub.utils.logging.decorators import log_performance
 
 class MainWindow(QtWidgets.QMainWindow):
     """

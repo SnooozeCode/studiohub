@@ -1,3 +1,4 @@
+# studiohub/__main__.py
 from __future__ import annotations
 
 import sys
@@ -9,16 +10,16 @@ from studiohub.style.tokens.loader import load_theme
 from studiohub.style.tokens.tokens import build_tokens
 from studiohub.style.palette import StudioPalette
 from studiohub.style.typography.fonts import load_app_fonts
-from studiohub.utils.logging import setup_logging, set_root_logger, get_logger
-from studiohub.config.paths import get_appdata_root
+from studiohub.utils import setup_logging, set_root_logger, get_logger
+from studiohub.utils.path import get_appdata_root
 
 def main() -> int:
     # Setup logging FIRST
     appdata_root = get_appdata_root()
     root_logger = setup_logging(
         appdata_root,
-        log_level="DEBUG",  # Use INFO in production
-        json_format=False,   # Set to True for production log aggregation
+        log_level="DEBUG",
+        json_format=False,
     )
     set_root_logger(root_logger)
     logger = get_logger(__name__)

@@ -19,7 +19,7 @@ from studiohub.ui.dashboard.panels.dashboard_panels import (
     OpenPrintLogPanel,
 )
 from studiohub.ui.dashboard.panels.studio_mood import StudioMoodPanel
-from studiohub.utils.logging import get_logger
+from studiohub.utils.logging.core import get_logger
 from studiohub.style.typography.rules import apply_typography
 
 logger = get_logger(__name__)

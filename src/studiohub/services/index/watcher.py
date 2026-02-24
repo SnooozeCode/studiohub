@@ -10,7 +10,7 @@ from PySide6 import QtCore
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
-from studiohub.utils.logging import get_logger
+from studiohub.utils.logging.core import get_logger
 
 logger = get_logger(__name__)
 

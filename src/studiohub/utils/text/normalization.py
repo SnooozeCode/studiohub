@@ -1,11 +1,20 @@
+# studiohub/utils/text/normalization.py
+"""
+Text normalization utilities for StudioHub.
+
+Provides:
+- Name normalization for posters, backgrounds, and studio content
+- Franchise detection and alias resolution
+- Acronym preservation
+"""
+
 from __future__ import annotations
 
 import re
-from typing import Tuple, Dict
-
+from typing import Dict, Tuple, Optional
 
 # =====================================================
-# Configuration
+# Constants
 # =====================================================
 
 ACRONYMS = {
@@ -23,7 +32,6 @@ FRANCHISE_ALIASES: Dict[str, str] = {
     "callofduty": "Call of Duty",
 }
 
-
 # =====================================================
 # Core helpers
 # =====================================================
@@ -36,6 +44,11 @@ _WORD_RE = re.compile(
 def split_words(text: str) -> list[str]:
     """
     Split CamelCase, snake_case, kebab-case, and glued words into tokens.
+    
+    Examples:
+        "AnatomicalBody" → ["Anatomical", "Body"]
+        "antique_parchment" → ["antique", "parchment"]
+        "RAM_GetYourShit" → ["RAM", "Get", "Your", "Shit"]
     """
     if not text:
         return []
@@ -49,6 +62,10 @@ def normalize_words(words: list[str]) -> Tuple[str, str]:
 
     key   → snake_case, lowercase, stable
     label → Title Case with acronym preservation
+    
+    Examples:
+        ["Anatomical", "Body"] → ("anatomical_body", "Anatomical Body")
+        ["RAM", "Get", "Your", "Shit"] → ("ram_get_your_shit", "RAM Get Your Shit")
     """
     key_parts = []
     label_parts = []
@@ -99,8 +116,8 @@ def normalize_background_name(raw: str) -> Dict[str, str]:
     Normalize a background variant name.
 
     Examples:
-      AntiqueParchment -> antique_parchment / Antique Parchment
-      chalkboard       -> chalkboard / Chalkboard
+      AntiqueParchment → antique_parchment / Antique Parchment
+      chalkboard       → chalkboard / Chalkboard
     """
     words = split_words(raw)
     key, label = normalize_words(words)
@@ -182,3 +199,64 @@ def normalize_studio_name(raw: str) -> Dict[str, str]:
         "title_label": title_label,
         "display_name": title_label,
     }
+
+
+# =====================================================
+# Simple name normalization (for basic UI display)
+# =====================================================
+
+def normalize_name(raw: str) -> str:
+    """
+    Convert filesystem-safe names into human-readable titles.
+    Simple version that doesn't return structured data.
+
+    Examples:
+      Anatomical_Body -> Anatomical Body
+      antique-parchment -> Antique Parchment
+    """
+    if not raw:
+        return ""
+
+    s = raw.replace("_", " ").replace("-", " ")
+    s = " ".join(s.split())  # collapse double spaces
+    return s.title()
+
+
+def normalize_patent_name(raw: str) -> str:
+    """
+    Normalize patent filenames with background separator preserved.
+
+    Examples:
+      AnatomicalBody-Blueprint
+        -> Anatomical Body - Blueprint
+
+      AnatomicalBody-AntiqueParchment
+        -> Anatomical Body - Antique Parchment
+    """
+    if not raw:
+        return ""
+
+    # Split patent vs background ON FIRST HYPHEN ONLY
+    if "-" in raw:
+        left, right = raw.split("-", 1)
+    else:
+        left, right = raw, ""
+
+    # Normalize patent title
+    left_words = split_words(left.replace("_", " "))
+    left_norm = " ".join(
+        w.upper() if w.lower() in ACRONYMS else w.capitalize()
+        for w in left_words
+    )
+
+    if not right:
+        return left_norm
+
+    # Normalize background
+    right_words = split_words(right.replace("_", " "))
+    right_norm = " ".join(
+        w.upper() if w.lower() in ACRONYMS else w.capitalize()
+        for w in right_words
+    )
+
+    return f"{left_norm} - {right_norm}"

@@ -19,8 +19,7 @@ from typing import List, Dict, Any, Optional, Tuple, Iterable
 
 from PySide6 import QtCore
 
-from studiohub.utils.logging import get_logger, log_performance
-from studiohub.utils.file_utils import atomic_write, FileLock
+from studiohub.utils import get_logger, log_performance, atomic_write, FileLock
 
 logger = get_logger(__name__)
 

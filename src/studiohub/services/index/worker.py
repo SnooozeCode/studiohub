@@ -11,8 +11,8 @@ from datetime import datetime
 from PySide6 import QtCore
 
 from studiohub.models.poster_index_builder import scan_single_poster
-from studiohub.utils.logging import get_logger
-from studiohub.utils.file_utils import atomic_write_json, safe_read_json, FileLock
+
+from studiohub.utils import get_logger, atomic_write_json, safe_read_json, FileLock
 
 logger = get_logger(__name__)
 

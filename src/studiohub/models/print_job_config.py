@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from pathlib import Path
 
-from studiohub.config_manager import ConfigManager
+from studiohub.config.manager import ConfigManager
 
 
 @dataclass(frozen=True)

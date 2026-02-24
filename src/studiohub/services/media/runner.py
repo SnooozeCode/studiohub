@@ -11,7 +11,8 @@ from PySide6.QtCore import QObject, Signal, Qt
 from studiohub.config.manager import ConfigManager
 from studiohub.services.media.worker import MediaWorker
 from studiohub.services.media.lock import MediaWorkerLock
-from studiohub.utils.logging import get_logger
+
+from studiohub.utils.logging.core import get_logger
 
 logger = get_logger(__name__)
 

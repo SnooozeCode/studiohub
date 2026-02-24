@@ -12,7 +12,7 @@ ICON_ROOT = ROOT / "assets" / "icons"
 # Semantic icon registry
 # -------------------------------------------------
 from pathlib import Path
-from studiohub.utils.paths import asset_path
+from studiohub.utils import asset_path
 
 ICONS = {
     "menu": Path(asset_path("icons", "sidebar", "menu.svg")),

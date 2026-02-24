@@ -8,8 +8,7 @@ from pathlib import Path
 import socket
 from typing import Optional, List, Dict, Any
 
-from studiohub.utils.logging import get_logger
-from studiohub.utils.file_utils import atomic_write, FileLock
+from studiohub.utils import get_logger, log_performance, atomic_write, FileLock
 
 logger = get_logger(__name__)
 
