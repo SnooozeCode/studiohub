@@ -1,4 +1,5 @@
 """Index management service for poster index lifecycle."""
+
 from __future__ import annotations
 
 import time
@@ -9,8 +10,10 @@ from PySide6 import QtCore
 
 from studiohub.config_manager import ConfigManager
 from studiohub.models.poster_index import load_poster_index
-from studiohub.services.poster_index_worker import PosterIndexWorker
-from studiohub.services.index_watcher import IndexWatcher
+
+from studiohub.services.index.worker import PosterIndexWorker
+from studiohub.services.index.watcher import IndexWatcher
+from studiohub.services.index.log import append_index_log
 
 from studiohub.utils.logging import log_performance
 
@@ -22,7 +25,7 @@ class IndexManager(QtCore.QObject):
     """
     
     # =====================================================
-    # Signals - MUST be defined as class attributes
+    # Signals
     # =====================================================
     index_started = QtCore.Signal()
     index_finished = QtCore.Signal(int, str)  # duration_ms, status
@@ -143,7 +146,29 @@ class IndexManager(QtCore.QObject):
         )
         
         self._index_thread.start()
+        
+        # Log the index operation
+        self._log_index_operation("startup")
+        
         return True
+    
+    def _log_index_operation(self, source: str):
+        """Log index operation to the index log."""
+        try:
+            log_path = self._config.get_appdata_root() / "logs" / "index_log.jsonl"
+            archive_count = len(self._index_worker.index.get("posters", {}).get("archive", {})) if self._index_worker and self._index_worker.index else 0
+            studio_count = len(self._index_worker.index.get("posters", {}).get("studio", {})) if self._index_worker and self._index_worker.index else 0
+            
+            append_index_log(
+                log_path=log_path,
+                source=source,
+                archive=archive_count,
+                studio=studio_count,
+                duration_ms=0,  # Will be updated when finished
+                status="started"
+            )
+        except Exception as e:
+            logger.debug(f"Failed to log index operation: {e}")
     
     def start_file_watcher(self) -> None:
         """Start file system watcher for incremental updates."""

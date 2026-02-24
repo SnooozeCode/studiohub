@@ -1,3 +1,5 @@
+"""File system watcher for poster directories."""
+
 from __future__ import annotations
 
 import threading
@@ -11,6 +13,7 @@ from watchdog.events import FileSystemEventHandler
 from studiohub.utils.logging import get_logger
 
 logger = get_logger(__name__)
+
 
 class _PosterFolderHandler(FileSystemEventHandler):
     """
@@ -36,6 +39,7 @@ class IndexWatcher(QtCore.QObject):
     Watches Archive/ and Studio/ roots.
     Emits poster_dirty for debounced poster-level changes.
     """
+    
     poster_dirty = QtCore.Signal(str)
 
     DEBOUNCE_SECONDS = 0.4
@@ -64,10 +68,12 @@ class IndexWatcher(QtCore.QObject):
         self._observer.schedule(handler, str(studio_root), recursive=True)
 
     def start(self):
+        """Start the file watcher."""
         self._observer.start()
         logger.info("[IndexWatcher] started")
 
     def stop(self):
+        """Stop the file watcher."""
         self._observer.stop()
         self._observer.join()
         logger.info("Index watcher stopped")
@@ -77,6 +83,7 @@ class IndexWatcher(QtCore.QObject):
     # ----------------------------
 
     def _mark_dirty(self, path: Path):
+        """Mark a path as dirty for later processing."""
         poster_path = self._resolve_poster_root(path)
         if not poster_path:
             return
@@ -94,6 +101,7 @@ class IndexWatcher(QtCore.QObject):
             self._timer.start()
 
     def _flush(self):
+        """Flush all pending dirty paths."""
         with self._lock:
             posters = list(self._pending)
             self._pending.clear()
@@ -108,6 +116,7 @@ class IndexWatcher(QtCore.QObject):
             )
 
     def _resolve_poster_root(self, path: Path) -> Path | None:
+        """Resolve a file path to its poster root directory."""
         for parent in [path, *path.parents]:
             if parent.parent == self.archive_root:
                 return parent

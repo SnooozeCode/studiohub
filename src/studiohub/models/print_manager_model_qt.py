@@ -8,9 +8,9 @@ from typing import Any, Dict, List, Sequence
 from PySide6 import QtCore
 
 from studiohub.models.poster_index import load_poster_index
-from studiohub.services.photoshop import run_jsx
-from studiohub.services.print_log_writer import append_print_log
-from studiohub.services.paper_ledger import PaperLedger
+from studiohub.services.core.photoshop import run_jsx
+from studiohub.services.core.paper_ledger import PaperLedger
+from studiohub.services.core.print_log import append_print_log
 
 from studiohub.constants import PRINT_SIZES
 

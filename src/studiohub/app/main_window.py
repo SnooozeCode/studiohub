@@ -15,7 +15,7 @@ from PySide6.QtCore import Qt, Slot
 from studiohub.app.dependency_container import DependencyContainer, Dependencies
 from studiohub.constants import UIConstants, APP_VERSION
 from studiohub.services.navigation.navigation_service import NavigationService
-from studiohub.services.index.index_manager import IndexManager
+from studiohub.services.index.manager import IndexManager
 from studiohub.services.lifecycle.startup_manager import StartupManager
 from studiohub.services.lifecycle.view_initializer import ViewInitializer
 from studiohub.services.media.runner import start_media_worker

@@ -6,8 +6,7 @@ from typing import Any, List
 from PySide6 import QtCore, QtGui
 from PySide6.QtCore import Qt
 
-from studiohub.services.print_log_state import PrintLogState, PrintJobRecord
-
+from studiohub.services.core.print_log import PrintLogState, PrintJobRecord
 
 # =====================================================
 # Column Map

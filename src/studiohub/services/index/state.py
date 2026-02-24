@@ -1,3 +1,5 @@
+"""Poster index state management."""
+
 from __future__ import annotations
 
 from pathlib import Path
@@ -68,7 +70,6 @@ class PosterIndexState(QtCore.QObject):
         except Exception as exc:
             self._last_error = exc
             raise
-
 
     # -------------------------------------------------
     # State access

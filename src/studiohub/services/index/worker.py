@@ -1,8 +1,9 @@
+"""Background worker for poster index operations."""
+
 from __future__ import annotations
 
 import json
 import time
-import os
 from pathlib import Path
 from typing import Dict
 from datetime import datetime
@@ -17,7 +18,9 @@ logger = get_logger(__name__)
 
 
 class PosterIndexWorker(QtCore.QObject):
-    finished = QtCore.Signal(int, str)
+    """Worker for building and updating the poster index."""
+
+    finished = QtCore.Signal(int, str)  # duration_ms, status
     error = QtCore.Signal(str)
     status = QtCore.Signal(str)
     poster_updated = QtCore.Signal(str)
@@ -40,6 +43,7 @@ class PosterIndexWorker(QtCore.QObject):
 
     @QtCore.Slot()
     def run(self) -> None:
+        """Run a full index rebuild."""
         start = time.perf_counter()
 
         try:
@@ -53,6 +57,7 @@ class PosterIndexWorker(QtCore.QObject):
         self.finished.emit(duration_ms, "OK")
 
     def _full_rebuild(self):
+        """Perform full index rebuild."""
         archive_root = Path(self.config_manager.get("paths", "archive_root"))
         studio_root = Path(self.config_manager.get("paths", "studio_root"))
 
@@ -75,6 +80,7 @@ class PosterIndexWorker(QtCore.QObject):
     # -------------------------------------------------
 
     def reindex_poster_by_path(self, poster_path: Path) -> bool:
+        """Reindex a single poster by its filesystem path."""
         try:
             if self.index is None:
                 self._load_index()
@@ -113,8 +119,8 @@ class PosterIndexWorker(QtCore.QObject):
     # -------------------------------------------------
 
     def _poster_fingerprint(self, poster_path: Path) -> int:
+        """Generate a fingerprint for a poster based on file mtimes."""
         max_ns = 0
-        file_count = 0
         
         try:
             max_ns = max(max_ns, poster_path.stat().st_mtime_ns)
@@ -124,16 +130,15 @@ class PosterIndexWorker(QtCore.QObject):
         
         for p in poster_path.rglob("*"):
             if p.is_file():
-                file_count += 1
                 try:
                     max_ns = max(max_ns, p.stat().st_mtime_ns)
                 except Exception as e:
-                    # Don't spam status for every file
                     logger.warning(f"Failed to get mtime for {p}: {e}")
         
         return max_ns
 
     def _scan_root(self, root: Path) -> Dict[str, dict]:
+        """Scan a root directory for posters."""
         out = {}
         if not root.exists():
             return out
@@ -149,6 +154,7 @@ class PosterIndexWorker(QtCore.QObject):
         return out
 
     def _resolve_source(self, poster_path: Path) -> str | None:
+        """Determine if a path belongs to archive or studio."""
         if poster_path.parent == Path(self.config_manager.get("paths", "archive_root")):
             return "archive"
         if poster_path.parent == Path(self.config_manager.get("paths", "studio_root")):
@@ -156,10 +162,7 @@ class PosterIndexWorker(QtCore.QObject):
         return None
 
     def _load_index(self) -> None:
-        """
-        Load index safely with fallback to defaults.
-        Uses safe_read_json for automatic backup fallback.
-        """
+        """Load index safely with fallback to defaults."""
         self.index = safe_read_json(
             self.index_path,
             default={
@@ -175,24 +178,18 @@ class PosterIndexWorker(QtCore.QObject):
         logger.info(f"Saving index to {self.index_path}")
         
         try:
-            # Use file lock to prevent concurrent writes
             with FileLock(self.lock_path, timeout=5.0):
-                # Write atomically with backup
                 atomic_write_json(self.index_path, self.index, make_backup=True)
                 
         except TimeoutError:
             logger.error(f"Could not acquire lock for {self.index_path} after 5 seconds")
-            # Fall back to atomic write without lock (still safe, but might race)
             atomic_write_json(self.index_path, self.index, make_backup=True)
         except Exception as e:
             logger.error(f"Failed to save index: {e}")
             raise
 
     def _load_mtime_cache(self) -> dict:
-        """
-        Load mtime cache safely.
-        Returns default cache if file doesn't exist or is corrupted.
-        """
+        """Load mtime cache safely."""
         return safe_read_json(
             self.mtime_cache_path,
             default={"version": 1, "dirs": {}}
@@ -205,17 +202,13 @@ class PosterIndexWorker(QtCore.QObject):
             logger.debug(f"Saved mtime cache with {len(self.mtime_cache['dirs'])} entries")
         except Exception as e:
             logger.error(f"Failed to save mtime cache: {e}")
-            # Non-critical, continue
 
     # -------------------------------------------------
     # Recovery Methods
     # -------------------------------------------------
 
     def verify_index_integrity(self) -> bool:
-        """
-        Verify that the index file is valid JSON.
-        Returns True if valid, False otherwise.
-        """
+        """Verify that the index file is valid JSON."""
         if not self.index_path.exists():
             return True
         
@@ -227,9 +220,6 @@ class PosterIndexWorker(QtCore.QObject):
             return False
 
     def recover_index_from_backup(self) -> bool:
-        """
-        Attempt to recover the index from the most recent backup.
-        Returns True if recovery succeeded.
-        """
+        """Attempt to recover the index from the most recent backup."""
         from studiohub.utils.recovery import recover_from_backup
         return recover_from_backup(self.index_path)

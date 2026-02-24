@@ -27,15 +27,13 @@ from studiohub.models.print_job_config import PrintJobConfig
 # Core services
 # --------------------------------------------------
 
-from studiohub.services.paper_ledger import PaperLedger
-from studiohub.services.poster_index_state import PosterIndexState
-from studiohub.services.print_log_state import PrintLogState
+from studiohub.services.core.print_log import PrintLogState
+from studiohub.services.core.paper_ledger import PaperLedger
+from studiohub.services.index import PosterIndexState
+
 from studiohub.services.dashboard.service import DashboardService
 from studiohub.services.notifications.notification_service import NotificationService
-
-# ===== NEW: Media services =====
 from studiohub.services.media.service_qt import MediaServiceQt
-# ===============================
 
 # --------------------------------------------------
 # Qt-facing models

@@ -7,7 +7,7 @@ from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QIntValidator
 
-from studiohub.services.paper_ledger import PaperLedger
+from studiohub.services.core.paper_ledger import PaperLedger
 
 from studiohub.style.typography.rules import apply_typography
 from studiohub.style.utils.repolish import repolish

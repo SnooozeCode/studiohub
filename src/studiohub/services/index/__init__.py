@@ -1,6 +1,19 @@
-"""Index management services module."""
+"""Index management services for poster indexing and watching."""
+
 from __future__ import annotations
 
-from studiohub.services.index.index_manager import IndexManager
+from studiohub.services.index.manager import IndexManager
+from studiohub.services.index.worker import PosterIndexWorker
+from studiohub.services.index.watcher import IndexWatcher
+from studiohub.services.index.state import PosterIndexState
+from studiohub.services.index.log import append_index_log, get_index_log_reader, IndexLogReader
 
-__all__ = ["IndexManager"]
+__all__ = [
+    "IndexManager",
+    "PosterIndexWorker", 
+    "IndexWatcher",
+    "PosterIndexState",
+    "append_index_log",
+    "get_index_log_reader",
+    "IndexLogReader",
+]

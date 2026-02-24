@@ -318,7 +318,7 @@ class MockupGeneratorModelQt(QtCore.QObject):
 
         # Invoke Photoshop (run JSX worker)
         try:
-            from studiohub.services.photoshop import run_jsx
+            from studiohub.services.core.photoshop import run_jsx
         except ImportError as e:
             self.error.emit(f"Failed to import run_jsx: {e}")
             return
