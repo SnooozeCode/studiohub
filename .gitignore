@@ -81,6 +81,7 @@ output/
 
 # Compiled QSS output (generated)
 compiled.qss
+src/studiohub/codebase.txt
 
 # Token debug outputs
 tokens_dump.json
