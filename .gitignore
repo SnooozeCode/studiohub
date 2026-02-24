@@ -94,10 +94,10 @@ tokens_dump.json
 htmlcov/
 
 # Codebase export files
-codebase.txt
-codebase_gen.ps1
-codebase_*.txt
-codebase_*.ps1
+src/studiohub/codebase.txt
+src/studiohub/codebase_gen1.ps1
+src/studiohub/codebase_*.txt
+src/studiohub/codebase_*.ps1
 
 # ============================
 # Packaging / Releases
