@@ -81,7 +81,6 @@ output/
 
 # Compiled QSS output (generated)
 compiled.qss
-src/studiohub/codebase.txt
 
 # Token debug outputs
 tokens_dump.json
@@ -93,6 +92,12 @@ tokens_dump.json
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Codebase export files
+codebase.txt
+codebase_gen1.ps1
+codebase_*.txt
+codebase_*.ps1
 
 # ============================
 # Packaging / Releases
