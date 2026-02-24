@@ -4,13 +4,13 @@ from __future__ import annotations
 from PySide6 import QtWidgets, QtCore
 from PySide6.QtCore import Qt
 
-from studiohub.hub_models.print_jobs_model_qt import (
+from studiohub.models.print_jobs_model_qt import (
     PrintJobsModelQt,
     PrintJobRecord,
     ROLE_JOB,
 )
 
-from studiohub.hub_models.print_manager_model_qt import PrintManagerModelQt
+from studiohub.models.print_manager_model_qt import PrintManagerModelQt
 from studiohub.ui.delegates.failed_icon_delegate import FailedIconDelegate
 from studiohub.ui.dialogs.print_failed import PrintFailedDialog
 from studiohub.ui.dialogs.reprint_dialog import ReprintDialog, ReprintRequest

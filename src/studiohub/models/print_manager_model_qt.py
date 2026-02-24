@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Sequence
 
 from PySide6 import QtCore
 
-from studiohub.hub_models.poster_index import load_poster_index
+from studiohub.models.poster_index import load_poster_index
 from studiohub.services.photoshop import run_jsx
 from studiohub.services.print_log_writer import append_print_log
 from studiohub.services.paper_ledger import PaperLedger

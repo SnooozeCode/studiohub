@@ -21,7 +21,7 @@ from PySide6 import QtCore
 # --------------------------------------------------
 
 from studiohub.config_manager import ConfigManager
-from studiohub.hub_models.print_job_config import PrintJobConfig
+from studiohub.models.print_job_config import PrintJobConfig
 
 # --------------------------------------------------
 # Core services
@@ -41,10 +41,10 @@ from studiohub.services.media.service_qt import MediaServiceQt
 # Qt-facing models
 # --------------------------------------------------
 
-from studiohub.hub_models.missing_files_model_qt import MissingFilesModelQt
-from studiohub.hub_models.print_manager_model_qt import PrintManagerModelQt
-from studiohub.hub_models.mockup_generator_model_qt import MockupGeneratorModelQt
-from studiohub.hub_models.index_log_model_qt import IndexLogModelQt
+from studiohub.models.missing_files_model_qt import MissingFilesModelQt
+from studiohub.models.print_manager_model_qt import PrintManagerModelQt
+from studiohub.models.mockup_generator_model_qt import MockupGeneratorModelQt
+from studiohub.models.index_log_model_qt import IndexLogModelQt
 from studiohub.services.dashboard.notes_store import DashboardNotesStore
 
 # ==================================================

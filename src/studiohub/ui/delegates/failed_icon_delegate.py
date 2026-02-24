@@ -7,7 +7,7 @@ from PySide6.QtCore import Qt
 from studiohub.ui.icons import render_svg
 
 try:
-    from studiohub.hub_models.print_jobs_model_qt import ROLE_IS_FAILED, ROLE_JOB
+    from studiohub.models.print_jobs_model_qt import ROLE_IS_FAILED, ROLE_JOB
 except Exception:
     ROLE_IS_FAILED = Qt.UserRole + 1
     ROLE_JOB = Qt.UserRole

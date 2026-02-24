@@ -8,7 +8,7 @@ from typing import Optional, Callable
 from PySide6 import QtCore
 
 from studiohub.config_manager import ConfigManager
-from studiohub.hub_models.poster_index import load_poster_index
+from studiohub.models.poster_index import load_poster_index
 from studiohub.services.poster_index_worker import PosterIndexWorker
 from studiohub.services.index_watcher import IndexWatcher
 

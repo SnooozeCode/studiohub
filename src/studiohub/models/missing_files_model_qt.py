@@ -6,7 +6,7 @@ from typing import Any, Dict, Optional, Tuple
 from PySide6 import QtCore
 
 from studiohub.config_manager import ConfigManager
-from studiohub.hub_models.index_normalization import normalize_background_name
+from studiohub.models.index_normalization import normalize_background_name
 from studiohub.constants import PRINT_SIZES
 
 
