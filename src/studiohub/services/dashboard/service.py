@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import json
 import os
-import re
-import time  # ADD THIS IMPORT
-from dataclasses import dataclass
-from datetime import datetime, timedelta, timezone
+import time
+from enum import Enum
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Optional, Set
+from threading import RLock
+
+from PySide6.QtCore import QTimer
 
 from studiohub.services.dashboard.snapshot import (
     DashboardSnapshot,
@@ -50,6 +52,15 @@ def _normalize_source(src: str | None) -> str | None:
     return None
 
 
+class CacheInvalidationReason(Enum):
+    """Reasons for invalidating the dashboard cache."""
+    INDEX_CHANGED = "index"
+    PRINT_ADDED = "print_added"
+    PRINT_FAILED = "print_failed"
+    PAPER_CHANGED = "paper_changed"
+    MANUAL = "manual"
+
+
 # ============================================================
 # DashboardService
 # ============================================================
@@ -57,15 +68,6 @@ def _normalize_source(src: str | None) -> str | None:
 class DashboardService:
     """
     Single source of truth for dashboard state.
-
-    Unifies:
-      - dashboard_metrics.py (disk IO, consumables, costs, recents)
-      - dashboard_metrics_adapter.py (index-derived completeness + print deltas)
-
-    Rules:
-      - No UI imports
-      - Snapshot is immutable and UI-ready
-      - Light caching for disk reads
     """
 
     def __init__(
@@ -73,9 +75,9 @@ class DashboardService:
         *,
         config_manager,
         paper_ledger=None,
-        poster_index_state=None,         # optional, but enables archive/studio stats & print source inference
+        poster_index_state=None,
         print_log_path: Path | None = None,
-        print_log_state=None,            # optional, preferred for v2 job aggregation
+        print_log_state=None,
         index_log_path: Path | None = None,
     ) -> None:
         self._cfg = config_manager
@@ -93,22 +95,135 @@ class DashboardService:
             appdata = Path(os.getenv("APPDATA", Path.home()))
             self._index_log_path = appdata / "SnooozeCo" / "StudioHub" / "logs" / "index_log.jsonl"
 
+        # Import logger
+        from studiohub.utils.logging.core import get_logger
+        self._logger = get_logger(__name__, context={"service": "dashboard"})
+
         # Caches
         self._print_log_cache_rows: list[dict[str, Any]] = []
         self._print_log_cache_mtime: float | None = None
 
         self._filename_to_source: dict[str, str] = {}  # for print fallback inference
         
-        # ===== NEW: Snapshot cache =====
+        # ===== IMPROVED CACHE SYSTEM =====
         self._snapshot_cache: DashboardSnapshot | None = None
         self._cache_timestamp: float = 0
-        self._cache_ttl: float = 2.0  # Cache for 2 seconds
-        self._cache_enabled: bool = True  # Can be disabled for testing
-        # ===============================
+        self._cache_ttl: float = 2.0  # Base TTL in seconds
+        
+        # Track what's dirty
+        self._dirty_flags: Set[CacheInvalidationReason] = set()
+        self._cache_lock = RLock()
+        
+        # Debounced cache rebuild
+        self._rebuild_timer: QTimer | None = None
+        
+        # ===== CONFIGURABLE TTL =====
+        self._ttl_config = {
+            "index": 0.5,       # Index changes invalidate quickly
+            "print": 0.3,       # Print changes need very quick refresh
+            "paper": 1.0,       # Paper changes are less frequent
+            "default": 2.0,
+        }
 
     # --------------------------------------------------------
-    # Public
+    # Cache Management
     # --------------------------------------------------------
+
+    def set_cache_ttl(self, reason: str, seconds: float) -> None:
+        """Configure TTL for specific invalidation reasons."""
+        with self._cache_lock:
+            if reason in self._ttl_config:
+                self._ttl_config[reason] = max(0.1, seconds)
+                self._logger.debug(f"Cache TTL for {reason} set to {seconds}s")
+
+    def invalidate_cache(self, reason: CacheInvalidationReason = CacheInvalidationReason.MANUAL) -> None:
+        """
+        Invalidate cache and schedule rebuild.
+        Uses debouncing to prevent multiple rapid rebuilds.
+        """
+        with self._cache_lock:
+            self._dirty_flags.add(reason)
+            self._logger.debug(f"Cache invalidated due to: {reason.value}")
+            
+            # Cancel existing timer
+            if self._rebuild_timer and self._rebuild_timer.isActive():
+                self._rebuild_timer.stop()
+            
+            # Schedule rebuild with appropriate delay
+            delay = self._get_rebuild_delay()
+            if delay <= 0:
+                self._rebuild_cache()
+            else:
+                if not self._rebuild_timer:
+                    self._rebuild_timer = QTimer()
+                    self._rebuild_timer.timeout.connect(self._rebuild_cache)
+                self._rebuild_timer.start(int(delay * 1000))
+
+    def _get_rebuild_delay(self) -> float:
+        """Calculate appropriate rebuild delay based on dirty reasons."""
+        with self._cache_lock:
+            if not self._dirty_flags:
+                return 0.0
+            
+            # Priority order: index changes rebuild fastest
+            if CacheInvalidationReason.INDEX_CHANGED in self._dirty_flags:
+                return self._ttl_config["index"]
+            
+            # Print changes need quick refresh
+            if CacheInvalidationReason.PRINT_ADDED in self._dirty_flags:
+                return self._ttl_config["print"]
+            
+            # Paper changes can wait a bit
+            if CacheInvalidationReason.PAPER_CHANGED in self._dirty_flags:
+                return self._ttl_config["paper"]
+            
+            return self._ttl_config["default"]
+
+    def _rebuild_cache(self) -> None:
+        """Actually rebuild the cache."""
+        with self._cache_lock:
+            try:
+                # Build new snapshot
+                archive, studio = self._build_completeness()
+                monthly_print_count = self._monthly_print_count()
+
+                studio_mood = self._build_studio_mood(
+                    archive=archive,
+                    studio=studio,
+                    monthly=monthly_print_count,
+                )
+
+                # Get paper data from paper ledger
+                paper_data = self._build_paper()
+                
+                # Get ink data from ink builder
+                ink_data = self._build_ink()
+                
+                self._snapshot_cache = DashboardSnapshot(
+                    archive=archive,
+                    studio=studio,
+                    studio_mood=studio_mood,
+                    monthly_print_count=monthly_print_count,
+                    recent_prints=self._build_recent_prints(),
+                    monthly_costs=self._build_monthly_costs(),
+                    paper=paper_data,
+                    ink=ink_data,
+                    revenue=None,
+                    notes=None
+                )
+                
+                self._cache_timestamp = time.time()
+                self._logger.debug(
+                    f"Cache rebuilt with {len(self._dirty_flags)} reasons: "
+                    f"{[r.value for r in self._dirty_flags]}"
+                )
+                self._dirty_flags.clear()
+                
+            except Exception as e:
+                self._logger.error(f"Failed to rebuild cache: {e}", exc_info=True)
+                # Keep old cache if rebuild fails
+                if self._snapshot_cache:
+                    self._cache_timestamp = time.time()  # Reset timer to prevent constant rebuilds
 
     def get_snapshot(self) -> DashboardSnapshot:
         """
@@ -116,69 +231,19 @@ class DashboardService:
         
         Returns cached snapshot if still valid (within TTL).
         """
-        # Return cached snapshot if enabled and valid
-        if self._cache_enabled and self._snapshot_cache is not None:
+        with self._cache_lock:
             now = time.time()
-            if now - self._cache_timestamp < self._cache_ttl:
-                return self._snapshot_cache
-
-        # Build new snapshot
-        archive, studio = self._build_completeness()
-        monthly_print_count = self._monthly_print_count()
-
-        studio_mood = self._build_studio_mood(
-            archive=archive,
-            studio=studio,
-            monthly=monthly_print_count,
-        )
-
-        # Get paper data from paper ledger
-        paper_data = self._build_paper()
-        
-        # Get ink data from ink builder
-        ink_data = self._build_ink()
-        
-        snapshot = DashboardSnapshot(
-            archive=archive,
-            studio=studio,
-            studio_mood=studio_mood,
-            monthly_print_count=monthly_print_count,
-            recent_prints=self._build_recent_prints(),
-            monthly_costs=self._build_monthly_costs(),
-            paper=paper_data,
-            ink=ink_data,
-            revenue=None,
-            notes=None
-        )
-        
-        # Update cache
-        if self._cache_enabled:
-            self._snapshot_cache = snapshot
-            self._cache_timestamp = time.time()
-        
-        return snapshot
-
-    def invalidate_cache(self) -> None:
-        """
-        Force cache refresh on next get_snapshot() call.
-        Call this when underlying data changes (e.g., new print job).
-        """
-        self._snapshot_cache = None
-        self._cache_timestamp = 0
-
-    def set_cache_ttl(self, ttl_seconds: float) -> None:
-        """
-        Set cache time-to-live in seconds.
-        
-        Args:
-            ttl_seconds: Cache duration in seconds (0 to disable)
-        """
-        self._cache_ttl = max(0.0, ttl_seconds)
-        if ttl_seconds <= 0:
-            self._cache_enabled = False
-            self.invalidate_cache()
-        else:
-            self._cache_enabled = True
+            
+            # Force rebuild if cache is stale by TTL
+            if self._snapshot_cache and (now - self._cache_timestamp) > self._ttl_config["default"]:
+                self._dirty_flags.add(CacheInvalidationReason.MANUAL)
+                self._logger.debug("Cache stale by TTL, marking dirty")
+            
+            # Rebuild if needed
+            if self._dirty_flags or not self._snapshot_cache:
+                self._rebuild_cache()
+            
+            return self._snapshot_cache
 
     # ---------------------------------------------------------
     # Index completeness (from poster index state snapshot)
@@ -191,7 +256,7 @@ class DashboardService:
           - missing_files: total missing file count
           - complete_fraction: (total - issues)/total
         """
-        default = CompletenessSlice(issues=0, missing_files=0, complete_fraction=0.0)
+        default = CompletenessSlice(issues=0, missing_files=0, complete_fraction=0.0, total_posters=0)
 
         state = self._poster_index_state
         if not state or not getattr(state, "is_loaded", False):
@@ -253,7 +318,7 @@ class DashboardService:
             issues=int(issues),
             missing_files=int(missing_files),
             complete_fraction=float(max(0.0, min(1.0, frac))),
-            total_posters=int(total),  # NOW INCLUDED!
+            total_posters=int(total),
         )
     
     def _build_studio_mood(
@@ -266,7 +331,6 @@ class DashboardService:
         """
         High-level qualitative state of the studio.
         """
-
         if studio.complete_fraction < 0.5:
             mood = "stressed"
             label = "Studio is stressed"
@@ -281,8 +345,6 @@ class DashboardService:
             mood=mood,
             label=label,
         )
-
-
 
     # --------------------------------------------------------
     # Monthly Print Count (this month vs last month)
@@ -363,7 +425,6 @@ class DashboardService:
             delta_studio=int(s_this - s_last),
             delta_total=int((a_this + s_this) - (a_last + s_last)),
         )
-
 
     def _maybe_build_filename_map(self) -> None:
         """
@@ -449,7 +510,6 @@ class DashboardService:
             estimated_prints_left=est_prints_left,
             last_replaced=last_replaced,
         )
-
 
     # --------------------------------------------------------
     # Ink (estimated from config reset + print log)
@@ -621,7 +681,6 @@ class DashboardService:
         out: list[dict] = []
         for job in jobs:
             if not isinstance(job, dict):
-                # extremely defensive; shouldn't happen
                 continue
 
             schema = job.get("schema", "print_log_v1")
@@ -652,14 +711,13 @@ class DashboardService:
 
             out.append(
                 {
-                    "timestamp": ts,   # keep as string (panel can show it)
+                    "timestamp": ts,
                     "label": label,
-                    "raw": job,        # keep full payload for later UI upgrades
+                    "raw": job,
                 }
             )
 
         return out
-
 
     # --------------------------------------------------------
     # Disk log loading with mtime caching

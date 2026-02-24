@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import time
 from pathlib import Path
-from typing import Optional, Callable, TYPE_CHECKING
+from typing import Optional, Callable
 
 from PySide6 import QtCore
 
@@ -17,8 +17,8 @@ from studiohub.services.index.log import append_index_log
 
 from studiohub.utils import log_performance, get_logger
 
-if TYPE_CHECKING:
-    from studiohub.services.dashboard.service import DashboardService
+# Import at runtime to avoid circular imports
+from studiohub.services.dashboard.service import CacheInvalidationReason
 
 logger = get_logger(__name__)
 
@@ -42,7 +42,7 @@ class IndexManager(QtCore.QObject):
         self,
         config_manager: ConfigManager,
         status_callback: Optional[Callable[[str], None]] = None,
-        dashboard_service: Optional[DashboardService] = None,  # NEW
+        dashboard_service: Optional['DashboardService'] = None,
         parent: QtCore.QObject | None = None,
     ):
         """
@@ -58,7 +58,7 @@ class IndexManager(QtCore.QObject):
         
         self._config = config_manager
         self._status_callback = status_callback
-        self._dashboard_service = dashboard_service  # NEW
+        self._dashboard_service = dashboard_service
         self._index_running = False
         self._recently_indexed: dict[Path, float] = {}
         
@@ -79,6 +79,10 @@ class IndexManager(QtCore.QObject):
         
         # File watcher
         self._watcher: IndexWatcher | None = None
+        
+        # Debounce timer for batch invalidations
+        self._invalidation_timer: QtCore.QTimer | None = None
+        self._pending_invalidations: set[str] = set()
     
     # =====================================================
     # Internal helpers
@@ -93,14 +97,37 @@ class IndexManager(QtCore.QObject):
             except Exception:
                 pass
     
-    def _invalidate_dashboard_cache(self) -> None:
-        """Invalidate dashboard cache if dashboard service is available."""
+    def _invalidate_dashboard_cache(self, reason: CacheInvalidationReason) -> None:
+        """Invalidate dashboard cache with specified reason."""
         if self._dashboard_service is not None:
             try:
-                self._dashboard_service.invalidate_cache()
-                logger.debug("Dashboard cache invalidated after index change")
+                self._dashboard_service.invalidate_cache(reason)
+                logger.debug(f"Dashboard cache invalidated: {reason.value}")
             except Exception as e:
                 logger.warning(f"Failed to invalidate dashboard cache: {e}")
+    
+    def _schedule_batch_invalidation(self, poster_key: str) -> None:
+        """
+        Schedule a batched cache invalidation to prevent too many rapid updates.
+        Multiple poster updates within a short window trigger only one invalidation.
+        """
+        self._pending_invalidations.add(poster_key)
+        
+        if not self._invalidation_timer:
+            self._invalidation_timer = QtCore.QTimer()
+            self._invalidation_timer.setSingleShot(True)
+            self._invalidation_timer.timeout.connect(self._process_batch_invalidation)
+        
+        if not self._invalidation_timer.isActive():
+            self._invalidation_timer.start(500)  # 500ms debounce
+    
+    def _process_batch_invalidation(self) -> None:
+        """Process batched cache invalidation."""
+        if self._pending_invalidations:
+            count = len(self._pending_invalidations)
+            self._pending_invalidations.clear()
+            self._invalidate_dashboard_cache(CacheInvalidationReason.INDEX_CHANGED)
+            logger.debug(f"Batch invalidated dashboard cache after {count} poster updates")
     
     # =====================================================
     # Public API
@@ -221,6 +248,12 @@ class IndexManager(QtCore.QObject):
     def shutdown(self):
         """Shutdown index manager and clean up resources."""
         self._index_running = False
+        
+        # Clean up timer
+        if self._invalidation_timer and self._invalidation_timer.isActive():
+            self._invalidation_timer.stop()
+            self._invalidation_timer = None
+        
         if self._index_thread and self._index_thread.isRunning():
             self._index_thread.quit()
             self._index_thread.wait(1000)
@@ -268,7 +301,7 @@ class IndexManager(QtCore.QObject):
             self._emit_status(f"Index finished in {duration_ms}ms")
             
             # Invalidate dashboard cache on successful index
-            self._invalidate_dashboard_cache()
+            self._invalidate_dashboard_cache(CacheInvalidationReason.INDEX_CHANGED)
             
             self._pending_result = None
     
@@ -306,5 +339,5 @@ class IndexManager(QtCore.QObject):
         self.poster_updated.emit(poster_key)
         self._emit_status(f"Poster updated: {poster_key}")
         
-        # Invalidate dashboard cache on poster update
-        self._invalidate_dashboard_cache()
+        # Schedule batched cache invalidation
+        self._schedule_batch_invalidation(poster_key)

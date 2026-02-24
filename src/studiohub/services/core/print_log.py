@@ -25,6 +25,7 @@ from studiohub.utils import get_logger, log_performance, atomic_write, FileLock
 
 if TYPE_CHECKING:
     from studiohub.services.dashboard.service import DashboardService
+    from studiohub.services.dashboard.service import CacheInvalidationReason
 
 logger = get_logger(__name__)
 
@@ -102,7 +103,7 @@ class PrintLogState(QtCore.QObject):
     def __init__(
         self, 
         log_path: Path, 
-        dashboard_service: Optional[DashboardService] = None,  # NEW
+        dashboard_service: Optional[DashboardService] = None,
         parent=None
     ) -> None:
         super().__init__(parent)
@@ -110,6 +111,9 @@ class PrintLogState(QtCore.QObject):
         self._jobs: List[PrintJobRecord] = []
         self._writer = PrintLogWriter(log_path)
         self._dashboard_service = dashboard_service
+        
+        # Debounce timer for cache invalidation
+        self._invalidation_timer: QtCore.QTimer | None = None
         
     def set_dashboard_service(self, dashboard_service: DashboardService) -> None:
         """
@@ -119,19 +123,39 @@ class PrintLogState(QtCore.QObject):
         self._dashboard_service = dashboard_service
         logger.debug("Dashboard service connected to print log state")
 
-
     # -------------------------------------------------
     # Cache invalidation
     # -------------------------------------------------
 
-    def _invalidate_dashboard_cache(self) -> None:
-        """Invalidate dashboard cache if available."""
+    def _invalidate_dashboard_cache(self, reason: str = "print_added") -> None:
+        """Invalidate dashboard cache with appropriate reason."""
         if self._dashboard_service is not None:
             try:
-                self._dashboard_service.invalidate_cache()
-                logger.debug("Dashboard cache invalidated after print log change")
+                # Import here to avoid circular imports
+                from studiohub.services.dashboard.service import CacheInvalidationReason
+                
+                reason_map = {
+                    "print_added": CacheInvalidationReason.PRINT_ADDED,
+                    "print_failed": CacheInvalidationReason.PRINT_FAILED,
+                }
+                
+                invalidation_reason = reason_map.get(reason, CacheInvalidationReason.PRINT_ADDED)
+                self._dashboard_service.invalidate_cache(invalidation_reason)
+                logger.debug(f"Dashboard cache invalidated after {reason}")
             except Exception as e:
                 logger.warning(f"Failed to invalidate dashboard cache: {e}")
+    
+    def _schedule_cache_invalidation(self, reason: str) -> None:
+        """Schedule cache invalidation with debouncing."""
+        if not self._invalidation_timer:
+            self._invalidation_timer = QtCore.QTimer()
+            self._invalidation_timer.setSingleShot(True)
+            self._invalidation_timer.timeout.connect(
+                lambda: self._invalidate_dashboard_cache(reason)
+            )
+        
+        if not self._invalidation_timer.isActive():
+            self._invalidation_timer.start(300)  # 300ms debounce
 
     # -------------------------------------------------
     # Lifecycle
@@ -258,7 +282,7 @@ class PrintLogState(QtCore.QObject):
         try:
             self._writer.append(record)
             self.load()  # Reload to incorporate the new event
-            self._invalidate_dashboard_cache()  # NEW
+            self._schedule_cache_invalidation("print_failed")
         except Exception as exc:
             self.error.emit(f"Failed to record print failure: {exc}")
 
@@ -288,7 +312,7 @@ class PrintLogState(QtCore.QObject):
         try:
             self._writer.append(record)
             self.load()  # Reload to incorporate the new event
-            self._invalidate_dashboard_cache()  # NEW
+            self._schedule_cache_invalidation("print_added")
         except Exception as exc:
             self.error.emit(f"Failed to record reprint event: {exc}")
 

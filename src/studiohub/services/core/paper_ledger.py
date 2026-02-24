@@ -30,12 +30,15 @@ class PaperLedger(QtCore.QObject):
     changed = QtCore.Signal()
     status_message = QtCore.Signal(str)
 
-    def __init__(self, runtime_root: Path):
+    def __init__(self, runtime_root: Path, dashboard_service=None):
         super().__init__()
 
         self.log_path = runtime_root / "logs" / "paper_ledger.jsonl"
         self.log_path.parent.mkdir(parents=True, exist_ok=True)
         self.lock_path = self.log_path.with_suffix('.lock')
+        
+        # Dashboard service for cache invalidation
+        self._dashboard_service = dashboard_service
 
         # Derived state (never persisted)
         self.paper_name: str | None = None
@@ -45,8 +48,16 @@ class PaperLedger(QtCore.QObject):
 
         # Raw event history
         self._events: list[dict] = []
+        
+        # Debounce timer for cache invalidation
+        self._invalidation_timer: QtCore.QTimer | None = None
 
         self._load()
+        
+    def set_dashboard_service(self, dashboard_service):
+        """Set dashboard service for cache invalidation."""
+        self._dashboard_service = dashboard_service
+        logger.debug("Dashboard service connected to paper ledger")
 
     # -------------------------------------------------
     # Internal
@@ -153,6 +164,31 @@ class PaperLedger(QtCore.QObject):
             self.remaining_ft = max(0.0, remaining)
 
     # -------------------------------------------------
+    # Cache Invalidation
+    # -------------------------------------------------
+    
+    def _invalidate_dashboard_cache(self) -> None:
+        """Invalidate dashboard cache with paper change reason."""
+        if self._dashboard_service is not None:
+            try:
+                # Import here to avoid circular imports
+                from studiohub.services.dashboard.service import CacheInvalidationReason
+                self._dashboard_service.invalidate_cache(CacheInvalidationReason.PAPER_CHANGED)
+                logger.debug("Dashboard cache invalidated after paper change")
+            except Exception as e:
+                logger.warning(f"Failed to invalidate dashboard cache: {e}")
+    
+    def _schedule_cache_invalidation(self) -> None:
+        """Schedule cache invalidation with debouncing."""
+        if not self._invalidation_timer:
+            self._invalidation_timer = QtCore.QTimer()
+            self._invalidation_timer.setSingleShot(True)
+            self._invalidation_timer.timeout.connect(self._invalidate_dashboard_cache)
+        
+        if not self._invalidation_timer.isActive():
+            self._invalidation_timer.start(500)  # 500ms debounce
+
+    # -------------------------------------------------
     # Public API
     # -------------------------------------------------
 
@@ -169,6 +205,10 @@ class PaperLedger(QtCore.QObject):
         # Emit status message for notification system
         self.status_message.emit(f"Paper replaced: {name} ({total_ft} ft)")
         self.changed.emit()
+        
+        # Invalidate dashboard cache
+        self._schedule_cache_invalidation()
+        
         logger.debug("Paper replacement event appended")
 
     def commit_print(self, job_id: str, length_in: float) -> None:
@@ -180,6 +220,9 @@ class PaperLedger(QtCore.QObject):
         }
         self._append(event)
         self.changed.emit()
+        
+        # Paper change affects dashboard
+        self._schedule_cache_invalidation()
 
     def fail_print(self, job_id: str, planned_in: float, actual_in: float) -> None:
         event = {
@@ -191,6 +234,9 @@ class PaperLedger(QtCore.QObject):
         }
         self._append(event)
         self.changed.emit()
+        
+        # Paper change affects dashboard
+        self._schedule_cache_invalidation()
 
     def get_failed_jobs(self) -> dict[str, dict]:
         """

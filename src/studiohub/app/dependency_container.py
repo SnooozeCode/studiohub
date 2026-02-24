@@ -134,22 +134,17 @@ class DependencyContainer:
         # Core services (order matters!)
         # --------------------------------------------------
 
-        # 1. Paper ledger (no dependencies)
         paper_ledger = PaperLedger(runtime_root)
 
-        # 2. Poster index state (no dependencies)
         poster_index_state = PosterIndexState(parent)
         poster_index_state.load(config_manager.get_poster_index_path())
 
-        # 3. Print log state (needs dashboard service, but we create it first without dashboard_service)
-        #    We'll update it after dashboard service is created
         print_log_state = PrintLogState(
             log_path=config_manager.get_print_log_path(),
-            dashboard_service=None,  # Will set after dashboard service is created
+            dashboard_service=None,
             parent=parent,
         )
 
-        # Load print log (may fail on first launch)
         try:
             print_log_state.load()
         except Exception as e:
@@ -158,12 +153,10 @@ class DependencyContainer:
             else:
                 print(f"[WARN] Failed to load print log: {e}")
 
-        # 4. Notes store (needs config)
         notes_store = DashboardNotesStore(
             config_manager=config_manager
         )
         
-        # 5. Dashboard service (needs everything)
         dashboard_service = DashboardService(
             config_manager=config_manager,
             paper_ledger=paper_ledger,
@@ -172,21 +165,18 @@ class DependencyContainer:
             print_log_path=config_manager.get_print_log_path(),
         )
 
-        # 6. Now update print log state with dashboard service reference
         print_log_state.set_dashboard_service(dashboard_service)
+        paper_ledger.set_dashboard_service(dashboard_service)
 
-        # 7. Index manager (needs dashboard service)
         index_manager = IndexManager(
             config_manager=config_manager,
             status_callback=parent._safe_emit_status if parent else None,
-            dashboard_service=dashboard_service,
+            dashboard_service=dashboard_service,  # Pass it here
             parent=parent,
         )
 
-        # 8. Notification service (no dependencies)
         notification_service = NotificationService()
         
-        # 9. Media service (needs config)
         media_service = MediaServiceQt(
             config=config_manager,
             parent=parent
