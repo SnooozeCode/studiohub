@@ -1,3 +1,4 @@
+# studiohub/models/missing_files_model_qt.py
 
 import json
 from pathlib import Path
@@ -26,7 +27,7 @@ class MissingFilesModelQt(QtCore.QObject):
     Contract:
     - NEVER scans filesystem directly.
     - Reads ONLY poster_index.json (cache_version=2).
-    - Emits view-shaped data that lists ONLY what is missing.
+    - Emits view-shaped data that contains ALL posters with their missing status.
     """
 
     scan_started = QtCore.Signal(str)            # source
@@ -64,11 +65,11 @@ class MissingFilesModelQt(QtCore.QObject):
             index = self._load_index()
 
             if source == "archive":
-                self._cache_archive = self._build_archive(index)
+                self._cache_archive = self._build_archive_status(index)
             else:
-                self._cache_studio = self._build_studio(index)
+                self._cache_studio = self._build_studio_status(index)
 
-            # IMPORTANT: emit for BOTH sources
+            # Emit for the requested source
             self.scan_finished.emit(source, self.get_cache(source))
 
         except Exception as e:
@@ -97,163 +98,118 @@ class MissingFilesModelQt(QtCore.QObject):
 
         return data
 
-
     # -------------------------------------------------
-    # Helpers (index-v2 truth)
-    # -------------------------------------------------
-
-    def _patent_size_has_output(self, size_meta: Dict[str, Any]) -> bool:
-        """
-        A patent size is considered present if ANY background variant exists.
-        """
-        if not isinstance(size_meta, dict):
-            return False
-
-        bgs = size_meta.get("backgrounds")
-        if not isinstance(bgs, dict) or not bgs:
-            return False
-
-        for bg_rec in bgs.values():
-            if isinstance(bg_rec, dict) and bg_rec.get("exists") is True:
-                return True
-
-        return False
-
-    def _studio_size_has_output(self, size_meta: Dict[str, Any]) -> bool:
-        """
-        A studio size is considered present if there is at least one file.
-        """
-        if not isinstance(size_meta, dict):
-            return False
-
-        files = size_meta.get("files") or []
-        return isinstance(files, list) and len(files) > 0
-
-    # -------------------------------------------------
-    # Builders
+    # Status Builders (for ALL posters)
     # -------------------------------------------------
 
-    def _build_archive(self, index: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_archive_status(self, index: Dict[str, Any]) -> Dict[str, Any]:
+        """Build status data for ALL archive posters."""
         posters = (index.get("posters") or {}).get("archive") or {}
         out: Dict[str, Any] = {}
 
         for folder_name, meta in sorted(posters.items(), key=lambda kv: kv[0].lower()):
+            if not isinstance(meta, dict):
+                continue
+
             display_name = (meta.get("display_name") or folder_name).strip()
             sizes_meta = meta.get("sizes") or {}
+            exists = meta.get("exists") or {}
 
-            # Legacy fields: index v2 does not track master/web -> never mark missing
-            missing_master = False
-            missing_web = False
-
-            # Determine which sizes actually have printable output
-            size_has_output = {}
-            for size in PRINT_SIZES:
-                sm = sizes_meta.get(size) or {}
-                size_has_output[size] = self._patent_size_has_output(sm)
-
-            missing_sizes = [s for s in PRINT_SIZES if not size_has_output.get(s, False)]
-
-            # Background missing is computed only for sizes that DO have output at all
-            missing_bgs: Dict[str, Dict[str, Any]] = {}
-
-            for size in PRINT_SIZES:
-                if not size_has_output.get(size, False):
-                    continue
-
-                sm = sizes_meta.get(size) or {}
-                bgs = sm.get("backgrounds") or {}
-
-                # Normalize existing bg keys before comparison
-                existing_bg_keys_norm = set()
-                if isinstance(bgs, dict):
-                    for raw_bg_key, bg_rec in bgs.items():
-                        if not (isinstance(bg_rec, dict) and bg_rec.get("exists") is True):
-                            continue
-                        try:
-                            norm = normalize_background_name(raw_bg_key)["key"]
-                        except Exception:
-                            norm = str(raw_bg_key).strip().lower().replace(" ", "_")
-                        existing_bg_keys_norm.add(norm)
-
-                for expected_key, expected_label in EXPECTED_PATENT_BG:
-                    if expected_key not in existing_bg_keys_norm:
-                        slot = missing_bgs.setdefault(
-                            expected_key, {"label": expected_label, "sizes": []}
-                        )
-                        slot["sizes"].append(size)
-
-            stable_bgs = {
-                k: {"label": missing_bgs[k]["label"], "sizes": sorted(missing_bgs[k]["sizes"])}
-                for k in sorted(missing_bgs.keys())
-                if missing_bgs[k].get("sizes")
+            # Track what's missing
+            missing = {
+                "master": not bool(exists.get("master", False)),
+                "web": not bool(exists.get("web", False)),
+                "sizes": [],
+                "backgrounds": {}
             }
 
-            any_missing = bool(missing_sizes) or bool(stable_bgs) or missing_master or missing_web
-            if not any_missing:
-                continue
+            # Check each size
+            for size in PRINT_SIZES:
+                sm = sizes_meta.get(size) or {}
+                
+                # Check if size has any output
+                has_output = False
+                bgs = sm.get("backgrounds") or {}
+                
+                if bgs:
+                    # Archive: check backgrounds
+                    for bg_key, bg_rec in bgs.items():
+                        if isinstance(bg_rec, dict) and bg_rec.get("exists") is True:
+                            has_output = True
+                            break
+                
+                if not has_output:
+                    missing["sizes"].append(size)
 
-            missing_payload: Dict[str, Any] = {}
+                # Check expected backgrounds for this size
+                if has_output:
+                    # Normalize existing bg keys
+                    existing_bg_keys_norm = set()
+                    for raw_bg_key, bg_rec in bgs.items():
+                        if isinstance(bg_rec, dict) and bg_rec.get("exists") is True:
+                            try:
+                                norm = normalize_background_name(raw_bg_key)["key"]
+                            except Exception:
+                                norm = str(raw_bg_key).strip().lower().replace(" ", "_")
+                            existing_bg_keys_norm.add(norm)
 
-            if missing_master:
-                missing_payload["master"] = True
+                    # Check each expected background
+                    for expected_key, expected_label in EXPECTED_PATENT_BG:
+                        if expected_key not in existing_bg_keys_norm:
+                            # This background is missing for this size
+                            bg_missing = missing["backgrounds"].setdefault(
+                                expected_key, {
+                                    "label": expected_label,
+                                    "sizes": []
+                                }
+                            )
+                            if size not in bg_missing["sizes"]:
+                                bg_missing["sizes"].append(size)
 
-            if missing_web:
-                missing_payload["web"] = True
-
-            if missing_sizes:
-                missing_payload["sizes"] = missing_sizes
-
-            if any(v.get("sizes") for v in stable_bgs.values()):
-                missing_payload["backgrounds"] = stable_bgs
-
-            if not missing_payload:
-                continue
-
+            # Store ALL posters with their missing status
             out[folder_name] = {
                 "display_name": display_name,
                 "path": folder_name,
-                "missing": missing_payload,
+                "missing": missing,
             }
 
         return {k: out[k] for k in sorted(out.keys(), key=lambda x: x.lower())}
 
-    def _build_studio(self, index: Dict[str, Any]) -> Dict[str, Any]:
+    def _build_studio_status(self, index: Dict[str, Any]) -> Dict[str, Any]:
+        """Build status data for ALL studio posters."""
         posters = (index.get("posters") or {}).get("studio") or {}
         out: Dict[str, Any] = {}
 
         for folder_name, meta in sorted(posters.items(), key=lambda kv: kv[0].lower()):
-            display_name = (meta.get("display_name") or folder_name).strip()
-            sizes_meta = meta.get("sizes") or {}
-
-            # Index v2: master/web are authoritative and present in index
-            exists = meta.get("exists") or {}
-            missing_master = not bool(exists.get("master"))
-            missing_web = not bool(exists.get("web"))
-
-            size_has_output = {}
-            for size in PRINT_SIZES:
-                sm = sizes_meta.get(size) or {}
-                size_has_output[size] = self._studio_size_has_output(sm)
-
-            missing_sizes = [s for s in PRINT_SIZES if not size_has_output.get(s, False)]
-
-            missing_payload: Dict[str, Any] = {}
-
-            if missing_master:
-                missing_payload["master"] = True
-
-            if missing_web:
-                missing_payload["web"] = True
-
-            if missing_sizes:
-                missing_payload["sizes"] = missing_sizes
-
-            if not missing_payload:
+            if not isinstance(meta, dict):
                 continue
 
+            display_name = (meta.get("display_name") or folder_name).strip()
+            sizes_meta = meta.get("sizes") or {}
+            exists = meta.get("exists") or {}
+
+            # Track what's missing
+            missing = {
+                "master": not bool(exists.get("master", False)),
+                "web": not bool(exists.get("web", False)),
+                "sizes": []
+            }
+
+            # Check each size
+            for size in PRINT_SIZES:
+                sm = sizes_meta.get(size) or {}
+                
+                # Studio: check if size has files
+                files = sm.get("files") or []
+                has_files = isinstance(files, list) and len(files) > 0
+                
+                if not has_files:
+                    missing["sizes"].append(size)
+
+            # Store ALL posters with their missing status
             out[folder_name] = {
                 "display_name": display_name,
-                "missing": missing_payload,
+                "missing": missing,
             }
 
         return {k: out[k] for k in sorted(out.keys(), key=lambda x: x.lower())}
