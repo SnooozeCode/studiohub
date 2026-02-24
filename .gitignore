@@ -95,7 +95,7 @@ htmlcov/
 
 # Codebase export files
 codebase.txt
-codebase_gen1.ps1
+codebase_gen.ps1
 codebase_*.txt
 codebase_*.ps1
 
