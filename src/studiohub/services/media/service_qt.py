@@ -88,6 +88,20 @@ class MediaServiceQt(QObject):
         """Actually process the file change after debouncing."""
         self._pending_update = False
         
+        # Check if file is locked by writer
+        lock_path = self._json_path.with_suffix('.lock')
+        if lock_path.exists():
+            # File is being written, reschedule check
+            try:
+                lock_age = time.time() - lock_path.stat().st_mtime
+                if lock_age < 2.0:  # Lock is recent, wait
+                    if not self._pending_update:
+                        self._pending_update = True
+                        self._debounce_timer.start(self.DEBOUNCE_MS)
+                    return
+            except:
+                pass
+        
         if not self._json_path.exists():
             # No file yet - emit inactive state
             payload = {
@@ -106,6 +120,9 @@ class MediaServiceQt(QObject):
         try:
             if self._json_path.stat().st_size == 0:
                 # Empty file - probably being written, wait for next event
+                if not self._pending_update:
+                    self._pending_update = True
+                    self._debounce_timer.start(self.DEBOUNCE_MS)
                 return
         except OSError:
             return
@@ -121,6 +138,13 @@ class MediaServiceQt(QObject):
         except json.JSONDecodeError as e:
             # File might be partially written - schedule a retry
             print(f"[MediaService] JSON decode error (will retry): {e}")
+            if not self._pending_update:
+                self._pending_update = True
+                self._debounce_timer.start(self.DEBOUNCE_MS)
+            return
+        except PermissionError as e:
+            # File is locked - reschedule
+            print(f"[MediaService] File locked (will retry): {e}")
             if not self._pending_update:
                 self._pending_update = True
                 self._debounce_timer.start(self.DEBOUNCE_MS)
@@ -147,7 +171,7 @@ class MediaServiceQt(QObject):
             self._last_payload = payload
             self.updated.emit(payload)
         
-        # Ensure we're watching both files (in case they were created after startup)
+        # Ensure we're watching both files
         self._setup_watcher()
 
     def refresh(self):
