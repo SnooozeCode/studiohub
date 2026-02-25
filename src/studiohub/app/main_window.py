@@ -97,6 +97,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self._finalize_startup()
         self._logger.debug("MainWindow initialization complete")
 
+    # ===================================
+    # Memory Monitor for Debug
+    # ===================================
 
     def _add_memory_monitor_action(self):
         """Add memory monitor to debug menu (hidden unless debug mode)."""
@@ -719,7 +722,7 @@ class MainWindow(QtWidgets.QMainWindow):
         nav.register_activation_hook("print_jobs", self._on_print_jobs_activated)
         nav.register_activation_hook("index_log", self._on_index_log_activated)
     
-    def _wire_navigation_signals(self) -> None:
+    def _wire_navigation_signals(self):
         """Wire navigation-related signals."""
         # Update sidebar when view changes
         self._navigation.view_changed.connect(self._on_view_changed)
@@ -731,7 +734,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 self._on_replace_paper_requested
             )
 
-            # FIXED: Use the correct signals from DashboardView
             dashboard.new_print_job_requested.connect(
                 lambda: self._navigation.show_view("print_manager")
             )
@@ -744,6 +746,12 @@ class MainWindow(QtWidgets.QMainWindow):
         self._index_manager.index_finished.connect(self._on_index_finished)
         self._index_manager.index_error.connect(self._on_index_error)
         self._index_manager.poster_updated.connect(self._on_poster_updated)
+        self._index_manager.index_updated.connect(self._on_index_updated)
+
+        # Connect index updates to missing files view
+        missing_view = self._navigation.get_view("missing_files")
+        if missing_view:
+            self._index_manager.index_updated.connect(missing_view.on_index_updated)
         
         # Theme changed updates sidebar
         self.theme_changed.connect(self._sidebar._sidebar_on_theme_changed)
@@ -761,16 +769,16 @@ class MainWindow(QtWidgets.QMainWindow):
             print_view.send_requested.connect(model.send)
             print_view.reprint_requested.connect(model.reprint_last_batch)
 
-        # Missing files wiring
         missing_view = self._navigation.get_view("missing_files")
         if missing_view:
             mm = self._deps.missing_model
             missing_view.refresh_requested.connect(mm.refresh)
             mm.scan_started.connect(lambda src: missing_view.set_loading(src, "Scanning..."))
-            mm.scan_finished.connect(missing_view.set_data)
+            # FIX THIS LINE:
+            mm.scan_finished.connect(missing_view.set_data)  # Direct connection, not through main window
             mm.scan_error.connect(missing_view.set_error)
             self.theme_changed.connect(missing_view.on_theme_changed)
-    
+
     def _finalize_startup(self) -> None:
         """Complete application startup."""
         # Validate paths
@@ -1076,6 +1084,29 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # This will trigger a success notification via _filter_status_for_notification
         self._safe_emit_status(f"Index finished - {duration_ms}ms")
+
+    def _on_index_updated(self):
+        """Handle incremental index update."""
+        self._logger.debug("Index updated, refreshing dependent views")
+        print(f"[MAIN] ===== INDEX UPDATED at {datetime.now().strftime('%H:%M:%S')} =====")
+        
+        # Refresh models that depend on index
+        print("[MAIN] Refreshing missing model...")
+        self._deps.missing_model.refresh("archive")
+        self._deps.missing_model.refresh("studio")
+        
+        print("[MAIN] Refreshing print manager model...")
+        self._deps.print_manager_model.refresh("archive")
+        self._deps.print_manager_model.refresh("studio")
+        
+        print("[MAIN] Reloading mockup model...")
+        self._deps.mockup_model.load_from_index("archive")
+        self._deps.mockup_model.load_from_index("studio")
+        
+        # ===== FORCE DASHBOARD REFRESH =====
+        print("[MAIN] Refreshing dashboard...")
+        self._refresh_dashboard_from_current_state()
+        
     
     def _on_index_error(self, message: str) -> None:
         """Handle index error."""

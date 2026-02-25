@@ -82,38 +82,74 @@ class PosterIndexWorker(QtCore.QObject):
     def reindex_poster_by_path(self, poster_path: Path) -> bool:
         """Reindex a single poster by its filesystem path."""
         try:
+            print(f"\n[WORKER] 🟣 Starting reindex for {poster_path}")
+            
             if self.index is None:
+                print("[WORKER] Loading index...")
                 self._load_index()
 
             key = poster_path.name
-            poster_mtime = self._poster_fingerprint(poster_path)
-            path_key = str(poster_path)
-
-            if self.mtime_cache["dirs"].get(path_key) == poster_mtime:
-                return False  # unchanged
-
+            print(f"[WORKER] Poster key: {key}")
+            
             source = self._resolve_source(poster_path)
+            print(f"[WORKER] Source: {source}")
+            
             if not source:
+                print("[WORKER] ❌ Could not resolve source")
                 return False
 
-            poster_data = scan_single_poster(poster_path)
-            poster_data["mtime"] = poster_mtime
+            # ===== DEEP DEBUG WEB DIRECTORY =====
+            web_dir = poster_path / "WEB"
+            print(f"[WORKER] WEB directory: {web_dir}")
+            print(f"[WORKER] WEB exists: {web_dir.exists()}")
+            
+            valid_web_files = []
+            if web_dir.exists():
+                all_files = list(web_dir.iterdir())
+                print(f"[WORKER] Total items in WEB: {len(all_files)}")
+                for f in all_files:
+                    if f.is_file():
+                        ext = f.suffix.lower()
+                        is_valid = ext in (".jpg", ".jpeg", ".png", ".webp")
+                        print(f"  File: {f.name} | ext={ext} | valid={is_valid} | size={f.stat().st_size}")
+                        if is_valid:
+                            valid_web_files.append(f)
+                    else:
+                        print(f"  Subdirectory: {f.name} (ignored)")
+            
+            print(f"[WORKER] Valid web files found: {len(valid_web_files)}")
+            
+            # Check current index value before scanning
+            if self.index and source in self.index.get("posters", {}):
+                current_poster = self.index["posters"][source].get(key, {})
+                current_web = current_poster.get("exists", {}).get("web", False)
+                print(f"[WORKER] Current web status in index: {current_web}")
 
+            print("[WORKER] Scanning poster...")
+            poster_data = scan_single_poster(poster_path)
+            new_web = poster_data.get("exists", {}).get("web", False)
+            print(f"[WORKER] Scan result - web status: {new_web}")
+
+            # Update index
+            poster_data["mtime"] = self._poster_fingerprint(poster_path)
             self.index["posters"][source][key] = poster_data
             self.index["generated_at"] = datetime.utcnow().isoformat(timespec="seconds")
+            print(f"[WORKER] Index updated. New web status: {new_web}")
 
-            self.mtime_cache["dirs"][path_key] = poster_mtime
-
+            # Save to disk
+            print("[WORKER] Saving index...")
             self._save_index()
-            self._save_mtime_cache()
+            print("[WORKER] ✅ Index saved")
 
             self.poster_updated.emit(key)
+            print(f"[WORKER] ✅ Emitted poster_updated for {key}")
             return True
 
         except Exception as e:
-            self.error.emit(str(e))
+            print(f"[WORKER] ❌ ERROR: {e}")
+            import traceback
+            traceback.print_exc()
             return False
-
     # -------------------------------------------------
     # Helpers
     # -------------------------------------------------

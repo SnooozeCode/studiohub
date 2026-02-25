@@ -37,12 +37,14 @@ class IndexManager(QtCore.QObject):
     index_error = QtCore.Signal(str)
     poster_updated = QtCore.Signal(str)  # poster_key
     status_message = QtCore.Signal(str)  # For status bar updates
-    
+    index_updated = QtCore.Signal() 
+
     def __init__(
         self,
         config_manager: ConfigManager,
         status_callback: Optional[Callable[[str], None]] = None,
         dashboard_service: Optional['DashboardService'] = None,
+        poster_index_state: Optional['PosterIndexState'] = None,
         parent: QtCore.QObject | None = None,
     ):
         """
@@ -59,8 +61,10 @@ class IndexManager(QtCore.QObject):
         self._config = config_manager
         self._status_callback = status_callback
         self._dashboard_service = dashboard_service
+        self._poster_index_state = poster_index_state
         self._index_running = False
         self._recently_indexed: dict[Path, float] = {}
+
         
         # Worker thread components
         self._index_thread: QtCore.QThread | None = None
@@ -126,8 +130,16 @@ class IndexManager(QtCore.QObject):
         if self._pending_invalidations:
             count = len(self._pending_invalidations)
             self._pending_invalidations.clear()
+            
+            # ===== CRITICAL: Reload the index state =====
+            if self._poster_index_state:
+                self._poster_index_state.reload()
+            
             self._invalidate_dashboard_cache(CacheInvalidationReason.INDEX_CHANGED)
             logger.debug(f"Batch invalidated dashboard cache after {count} poster updates")
+            
+            # Emit general index update signal
+            self.index_updated.emit()
     
     # =====================================================
     # Public API
@@ -303,8 +315,11 @@ class IndexManager(QtCore.QObject):
             # Invalidate dashboard cache on successful index
             self._invalidate_dashboard_cache(CacheInvalidationReason.INDEX_CHANGED)
             
+            # ===== NEW: Emit general index update signal =====
+            self.index_updated.emit()
+            
             self._pending_result = None
-    
+        
     @QtCore.Slot(str)
     def _on_poster_dirty(self, poster_path_str: str) -> None:
         """
@@ -313,7 +328,10 @@ class IndexManager(QtCore.QObject):
         Args:
             poster_path_str: Path to modified poster
         """
+        print(f"\n[MANAGER] 🟡 Received poster_dirty: {poster_path_str}")
+        
         if self._index_running:
+            print("[MANAGER] Index running, skipping")
             return
         
         poster_path = Path(poster_path_str)
@@ -322,12 +340,18 @@ class IndexManager(QtCore.QObject):
         # Debounce rapid updates
         last = self._recently_indexed.get(poster_path)
         if last and (now - last) < 2.0:
+            print(f"[MANAGER] Debouncing rapid update for {poster_path.name}")
             return
         
         self._recently_indexed[poster_path] = now
         self._emit_status(f"Poster changed: {poster_path.name}")
-        # Incremental worker will handle the update
-    
+        print(f"[MANAGER] Emitted status, now calling incremental worker")
+        
+        # Call the incremental worker directly
+        print(f"[MANAGER] Calling reindex_poster_by_path for {poster_path}")
+        result = self._incremental_worker.reindex_poster_by_path(poster_path)
+        print(f"[MANAGER] reindex_poster_by_path returned: {result}")
+
     @QtCore.Slot(str)
     def _on_poster_updated(self, poster_key: str) -> None:
         """
@@ -336,8 +360,68 @@ class IndexManager(QtCore.QObject):
         Args:
             poster_key: Updated poster identifier
         """
+        print(f"[INDEX MANAGER] 🟢 Poster updated: {poster_key}")
         self.poster_updated.emit(poster_key)
         self._emit_status(f"Poster updated: {poster_key}")
         
+        # ===== CRITICAL: Reload the index state =====
+        if self._poster_index_state:
+            self._poster_index_state.reload()  # Force reload from disk
+        
         # Schedule batched cache invalidation
         self._schedule_batch_invalidation(poster_key)
+        self.index_updated.emit()
+
+    def _reload_index_state(self) -> None:
+        """Reload the poster index state from disk."""
+        if self._poster_index_state:
+            print("[INDEX MANAGER] Reloading poster index state")
+            self._poster_index_state.reload()
+
+    def _on_poster_updated(self, poster_key: str) -> None:
+        """
+        Handle incremental poster update.
+        
+        Args:
+            poster_key: Updated poster identifier
+        """
+        print(f"[INDEX MANAGER] 🟢 Poster updated: {poster_key}")
+        self.poster_updated.emit(poster_key)
+        self._emit_status(f"Poster updated: {poster_key}")
+        
+        # ===== CRITICAL: Reload the index state =====
+        self._reload_index_state()
+        
+        # Schedule batched cache invalidation
+        self._schedule_batch_invalidation(poster_key)
+        self.index_updated.emit()
+
+    def _on_thread_finished(self) -> None:
+        """Cleanup after thread finishes."""
+        try:
+            if self._index_worker is not None:
+                self._index_worker.deleteLater()
+            if self._index_thread is not None:
+                self._index_thread.deleteLater()
+        finally:
+            self._index_worker = None
+            self._index_thread = None
+            self._index_running = False
+        
+        # Emit results
+        if self._pending_error:
+            self.index_error.emit(self._pending_error)
+            self._pending_error = None
+        elif self._pending_result:
+            duration_ms, status = self._pending_result
+            self.index_finished.emit(duration_ms, status)
+            self._emit_status(f"Index finished in {duration_ms}ms")
+            
+            # Invalidate dashboard cache on successful index
+            self._invalidate_dashboard_cache(CacheInvalidationReason.INDEX_CHANGED)
+            
+            # ===== CRITICAL: Reload the index state =====
+            self._reload_index_state()
+            
+            self.index_updated.emit()
+            self._pending_result = None

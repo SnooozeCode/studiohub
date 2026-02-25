@@ -84,12 +84,16 @@ class IndexWatcher(QtCore.QObject):
 
     def _mark_dirty(self, path: Path):
         """Mark a path as dirty for later processing."""
+        print(f"\n[WATCHER] 🔵 File changed: {path}")
         poster_path = self._resolve_poster_root(path)
         if not poster_path:
+            print(f"[WATCHER] ⚠️ Not a poster path: {path}")
             return
 
+        print(f"[WATCHER] ✅ Poster dirtied: {poster_path}")
         with self._lock:
             self._pending.add(poster_path)
+            print(f"[WATCHER] Pending posters: {len(self._pending)}")
 
             if self._timer:
                 self._timer.cancel()
@@ -99,6 +103,25 @@ class IndexWatcher(QtCore.QObject):
                 self._flush,
             )
             self._timer.start()
+            print(f"[WATCHER] Timer started for {self.DEBOUNCE_SECONDS}s")
+
+    def _flush(self):
+        """Flush all pending dirty paths."""
+        with self._lock:
+            posters = list(self._pending)
+            self._pending.clear()
+        
+        print(f"[WATCHER] 🔴 Flushing {len(posters)} dirty posters")
+        
+        # Emit signals via Qt's queued connection
+        for poster_path in posters:
+            print(f"[WATCHER] Emitting dirty: {poster_path}")
+            QtCore.QMetaObject.invokeMethod(
+                self, 
+                "poster_dirty", 
+                QtCore.Qt.QueuedConnection,
+                QtCore.Q_ARG(str, str(poster_path))
+            )
 
     def _flush(self):
         """Flush all pending dirty paths."""

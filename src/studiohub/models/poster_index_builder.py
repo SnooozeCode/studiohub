@@ -9,7 +9,7 @@ from studiohub.constants import PRINT_SIZES
 # Constants
 # =====================================================
 
-MASTER_EXTENSIONS = {".tif", ".tiff", ".psd", ".psb"}
+MASTER_EXTENSIONS = {".ai", ".psd", ".psb"}
 IGNORED_FILENAMES = {
     "desktop.ini",
     ".ds_store",
@@ -32,15 +32,28 @@ def scan_single_poster(poster_dir: Path) -> Dict[str, Any]:
 
     has_master = _has_valid_master(master_dir)
 
-    has_web = (
-        web_dir.exists()
-        and any(
-            p.is_file()
-            and p.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp")
-            for p in web_dir.iterdir()
-        )
-    )
-
+    # Debug web scanning
+    print(f"\n[SCANNER] Scanning {poster_dir.name}")
+    print(f"  WEB dir: {web_dir}")
+    print(f"  WEB exists: {web_dir.exists()}")
+    
+    if web_dir.exists():
+        files = list(web_dir.iterdir())
+        print(f"  Files found: {len(files)}")
+        valid_files = []
+        for f in files:
+            if f.is_file() and f.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp"):
+                valid_files.append(f)
+                print(f"  ✅ Valid web file: {f.name}")
+            else:
+                print(f"  ❌ Invalid: {f.name} (ext={f.suffix})")
+        
+        has_web = len(valid_files) > 0
+        print(f"  has_web = {has_web}")
+    else:
+        has_web = False
+        print(f"  has_web = False (dir doesn't exist)")
+        
     sizes: Dict[str, Any] = {}
     print_root = poster_dir / "PRINT"
 
