@@ -88,10 +88,32 @@ class MainWindow(QtWidgets.QMainWindow):
         # Connect model status signals to status bar and notifications
         self._connect_model_status_signals()
         self._connect_status_to_notifications()
+
+        # Add memory monitor shortcut (Ctrl+Shift+M)
+        self._add_memory_monitor_action()
         
         # Finalize startup
         self._finalize_startup()
         self._logger.debug("MainWindow initialization complete")
+
+
+    def _add_memory_monitor_action(self):
+        """Add memory monitor to debug menu (hidden unless debug mode)."""
+        # This is a hidden feature - can be triggered with Ctrl+Shift+M
+        shortcut = QtGui.QShortcut(QtGui.QKeySequence("Ctrl+Shift+M"), self)
+        shortcut.activated.connect(self._open_memory_monitor)
+
+    def _open_memory_monitor(self):
+        """Open the memory monitor dialog."""
+        from studiohub.ui.dialogs.memory_monitor import MemoryMonitorDialog
+        dialog = MemoryMonitorDialog(self)
+        dialog.show()  # Non-modal so you can keep it open
+
+    def _add_memory_analysis_shortcut(self):
+        """Add shortcut to analyze memory log (Ctrl+Shift+A)."""
+        shortcut = QtGui.QShortcut(QtGui.QKeySequence("Ctrl+Shift+A"), self)
+        shortcut.activated.connect(self._analyze_memory_log)
+
     
     def _setup_window(self) -> None:
         """Configure window properties."""
@@ -142,7 +164,7 @@ class MainWindow(QtWidgets.QMainWindow):
         
         # Apply theme
         self.apply_theme()
-    
+
     # =====================================================
     # Status Bar Helpers
     # =====================================================
