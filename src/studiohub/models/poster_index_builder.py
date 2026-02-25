@@ -31,28 +31,10 @@ def scan_single_poster(poster_dir: Path) -> Dict[str, Any]:
     web_dir = poster_dir / "WEB"
 
     has_master = _has_valid_master(master_dir)
-
-    # Debug web scanning
-    print(f"\n[SCANNER] Scanning {poster_dir.name}")
-    print(f"  WEB dir: {web_dir}")
-    print(f"  WEB exists: {web_dir.exists()}")
-    
-    if web_dir.exists():
-        files = list(web_dir.iterdir())
-        print(f"  Files found: {len(files)}")
-        valid_files = []
-        for f in files:
-            if f.is_file() and f.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp"):
-                valid_files.append(f)
-                print(f"  ✅ Valid web file: {f.name}")
-            else:
-                print(f"  ❌ Invalid: {f.name} (ext={f.suffix})")
-        
-        has_web = len(valid_files) > 0
-        print(f"  has_web = {has_web}")
-    else:
-        has_web = False
-        print(f"  has_web = False (dir doesn't exist)")
+    has_web = web_dir.exists() and any(
+        f.is_file() and f.suffix.lower() in (".jpg", ".jpeg", ".png", ".webp")
+        for f in web_dir.iterdir()
+    )
         
     sizes: Dict[str, Any] = {}
     print_root = poster_dir / "PRINT"
@@ -84,7 +66,6 @@ def scan_single_poster(poster_dir: Path) -> Dict[str, Any]:
         entry["exists"] = bool(valid_files)
 
         tifs = [p for p in valid_files if p.suffix.lower() in {".tif", ".tiff"}]
-
 
         inferred_backgrounds: Dict[str, Dict[str, Any]] = {}
 

@@ -207,22 +207,26 @@ class ContentHealthPanel(QWidget):
         layout.addWidget(self.studio_details)
 
     def set_data(self, archive: CompletenessSlice, studio: CompletenessSlice) -> None:
-        """
-        Update panel with archive and studio data.
-        Now using total_posters from the slice.
-        """
-        
+        """Update panel with archive and studio data."""
+
         # Archive
         archive_pct = int(archive.complete_fraction * 100)
+        archive_text = f"{archive.issues} issues · {archive.missing_files} missing"
+        
         self.archive_count.setText(f"{archive.total_posters}")
         self.archive_progress.setValue(archive_pct)
-        self.archive_details.setText(f"{archive.issues} issues · {archive.missing_files} missing")
+        self.archive_details.setText(archive_text)
         
         # Studio
         studio_pct = int(studio.complete_fraction * 100)
+        studio_text = f"{studio.issues} issues · {studio.missing_files} missing"
+        
         self.studio_count.setText(f"{studio.total_posters}")
         self.studio_progress.setValue(studio_pct)
-        self.studio_details.setText(f"{studio.issues} issues · {studio.missing_files} missing")
+        self.studio_details.setText(studio_text)
+        
+        # Force UI update
+        self.update()
 
 # ==================================================
 # Print Readiness Panel

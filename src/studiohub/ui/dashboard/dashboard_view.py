@@ -185,6 +185,11 @@ class DashboardView(QWidget):
     def refresh(self) -> None:
         """Refresh all panels with latest data."""
         snapshot = self._service.get_snapshot()
+        
+        # Safety check
+        if snapshot is None or snapshot.archive is None:
+            print("[DASHBOARD VIEW] Warning: Got invalid snapshot")
+            return
 
         # Row 1
         self.content_health_panel.set_data(snapshot.archive, snapshot.studio)

@@ -29,9 +29,8 @@ from studiohub.models.print_job_config import PrintJobConfig
 
 from studiohub.services.core.print_log import PrintLogState
 from studiohub.services.core.paper_ledger import PaperLedger
-from studiohub.services.index import PosterIndexState
 
-from studiohub.services.dashboard.service import DashboardService, CacheInvalidationReason
+from studiohub.services.dashboard.service import DashboardService
 from studiohub.services.notifications.notification_service import NotificationService
 from studiohub.services.media.service_qt import MediaServiceQt
 from studiohub.services.index import IndexManager
@@ -71,7 +70,6 @@ class Dependencies:
     # -----------------------------
 
     paper_ledger: PaperLedger
-    poster_index_state: PosterIndexState
     print_log_state: PrintLogState
     dashboard_service: DashboardService
     index_manager: IndexManager  # ADD THIS
@@ -136,9 +134,6 @@ class DependencyContainer:
 
         paper_ledger = PaperLedger(runtime_root)
 
-        poster_index_state = PosterIndexState(parent)
-        poster_index_state.load(config_manager.get_poster_index_path())
-
         print_log_state = PrintLogState(
             log_path=config_manager.get_print_log_path(),
             dashboard_service=None,
@@ -160,7 +155,6 @@ class DependencyContainer:
         dashboard_service = DashboardService(
             config_manager=config_manager,
             paper_ledger=paper_ledger,
-            poster_index_state=poster_index_state,
             print_log_state=print_log_state,  # Pass the print log state
             print_log_path=config_manager.get_print_log_path(),
         )
@@ -172,13 +166,7 @@ class DependencyContainer:
             config_manager=config_manager,
             status_callback=parent._safe_emit_status if parent else None,
             dashboard_service=dashboard_service,  # Pass it here
-            poster_index_state=poster_index_state,
             parent=parent,
-        )
-
-        # Connect state reload to dashboard invalidation
-        poster_index_state.changed.connect(
-            lambda: dashboard_service.invalidate_cache(CacheInvalidationReason.INDEX_CHANGED)
         )
 
         notification_service = NotificationService()
@@ -225,7 +213,6 @@ class DependencyContainer:
             config_manager=config_manager,
             print_job_config=print_job_config,
             paper_ledger=paper_ledger,
-            poster_index_state=poster_index_state,
             print_log_state=print_log_state,
             dashboard_service=dashboard_service,
             index_manager=index_manager,

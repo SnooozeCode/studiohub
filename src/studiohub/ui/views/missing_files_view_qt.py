@@ -113,7 +113,7 @@ class MissingFilesViewQt(QtWidgets.QFrame):
         self._pending_refresh = False
         self._is_rendering = False
         
-        # ===== NEW: Debounce timer for index updates =====
+        # Debounce timer for index updates
         self._update_timer = QtCore.QTimer()
         self._update_timer.setSingleShot(True)
         self._update_timer.timeout.connect(self._delayed_refresh)
@@ -341,8 +341,6 @@ class MissingFilesViewQt(QtWidgets.QFrame):
 
     def on_activated(self) -> None:
         """Called when view becomes active."""
-        print(f"\n[VIEW] on_activated called, current source={self._source}")
-        
         if not self._has_been_activated:
             self._source = "archive"  # Default to archive
             self._has_been_activated = True
@@ -351,11 +349,9 @@ class MissingFilesViewQt(QtWidgets.QFrame):
 
         # Check if we have data for the current source
         if self._data.get(self._source):
-            print(f"[VIEW] Have data for {self._source}, rendering")
             QtCore.QTimer.singleShot(0, self._render)
             QtCore.QTimer.singleShot(0, self._apply_column_widths)
         else:
-            print(f"[VIEW] No data for {self._source}, requesting refresh")
             self.refresh_requested.emit(self._source)
             # Show empty state while loading
             self._show_empty_state()
@@ -366,25 +362,19 @@ class MissingFilesViewQt(QtWidgets.QFrame):
         return self._source
 
     def set_source(self, source: str) -> None:
-        print(f"\n[VIEW] set_source called: {source} (current={self._source})")
         if source == self._source:
             return
         self._source = source
         self._update_header_buttons()
         self.source_changed.emit(source)
         
-        print(f"[VIEW] Source changed to {source}")
-        print(f"[VIEW] Data for {source} exists: {bool(self._data.get(source))}")
-        
         # Show appropriate view
         if self._data.get(source):
-            print(f"[VIEW] Data found for {source}, rendering")
             QtCore.QTimer.singleShot(0, self._render)
             QtCore.QTimer.singleShot(0, self._apply_column_widths)
             self.lbl_empty.setVisible(False)
             self.tree.setVisible(True)
         else:
-            print(f"[VIEW] No data for {source}, showing empty state")
             self._show_empty_state()
         
         self.refresh_requested.emit(source)
@@ -407,47 +397,21 @@ class MissingFilesViewQt(QtWidgets.QFrame):
 
     def set_data(self, source: str, data: Dict[str, Any]) -> None:
         """Set missing data and trigger render."""
-        print(f"\n[VIEW] ===== SET_DATA CALLED =====")
-        print(f"[VIEW] Source: {source}")
-        print(f"[VIEW] Data items: {len(data)}")
-        
-        # Check if data actually changed
-        old_data = self._data.get(source, {})
-        old_len = len(old_data)
-        new_len = len(data)
-        
-        print(f"[VIEW] Old data size: {old_len}")
-        print(f"[VIEW] New data size: {new_len}")
-        
-        if str(old_data) == str(data):
-            print(f"[VIEW] Data UNCHANGED for {source}")
-        else:
-            print(f"[VIEW] Data CHANGED for {source}")
-            if new_len > 0:
-                first_key = next(iter(data.keys()))
-                print(f"[VIEW] Sample item '{first_key}': {data[first_key]}")
-        
         self._data[source] = data or {}
         
         # Only update UI if this is the current source
         if source == self._source:
-            print(f"[VIEW] This is current source ({self._source}), updating UI")
             self.lbl_status.setVisible(False)
             
             if data:
-                print(f"[VIEW] Data has {len(data)} items, scheduling render")
                 self.lbl_empty.setVisible(False)
                 self.tree.setVisible(True)
                 # Defer render to avoid blocking
                 if not self._is_rendering:
-                    print("[VIEW] Scheduling render")
                     QtCore.QTimer.singleShot(0, self._render)
                     QtCore.QTimer.singleShot(0, self._apply_column_widths)
             else:
-                print("[VIEW] No data, showing empty state")
                 self._show_empty_state()
-        else:
-            print(f"[VIEW] Not current source (current={self._source}), ignoring")
 
     def set_index(self, index: Dict[str, Any]) -> None:
         """Set poster index data."""
@@ -468,7 +432,7 @@ class MissingFilesViewQt(QtWidgets.QFrame):
         
         self.lbl_empty.setVisible(True)
 
-    # ===== NEW: Handle index updates with debouncing =====
+    # Handle index updates with debouncing
     def on_index_updated(self):
         """Called when index changes - debounce to prevent too many refreshes."""
         if not self._pending_update:

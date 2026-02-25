@@ -23,6 +23,7 @@ from studiohub.services.dashboard.snapshot import (
     StudioMoodSlice,
 )
 
+from studiohub.constants import PRINT_SIZES
 
 # ============================================================
 # Helpers
@@ -241,7 +242,35 @@ class DashboardService:
             
             # Rebuild if needed
             if self._dirty_flags or not self._snapshot_cache:
-                self._rebuild_cache()
+                try:
+                    self._rebuild_cache()
+                except Exception as e:
+                    self._logger.error(f"Failed to rebuild cache: {e}", exc_info=True)
+                    # If rebuild fails and we have old cache, return it
+                    if self._snapshot_cache:
+                        return self._snapshot_cache
+                    # If no cache at all, return empty but valid snapshot
+                    from studiohub.services.dashboard.snapshot import (
+                        DashboardSnapshot, CompletenessSlice, MonthlyPrintCountSlice,
+                        MonthlyCostBreakdown, StudioMoodSlice
+                    )
+                    empty = CompletenessSlice(issues=0, missing_files=0, complete_fraction=0.0, total_posters=0)
+                    return DashboardSnapshot(
+                        archive=empty,
+                        studio=empty,
+                        studio_mood=StudioMoodSlice(mood="idle", label="Loading..."),
+                        monthly_print_count=MonthlyPrintCountSlice(
+                            archive_this_month=0, studio_this_month=0,
+                            archive_last_month=0, studio_last_month=0,
+                            delta_archive=0, delta_studio=0, delta_total=0
+                        ),
+                        recent_prints=[],
+                        monthly_costs=MonthlyCostBreakdown(ink=0.0, paper=0.0, shipping_supplies=0.0, prints=0),
+                        paper=None,
+                        ink=None,
+                        revenue=None,
+                        notes=None
+                    )
             
             return self._snapshot_cache
 
@@ -252,26 +281,28 @@ class DashboardService:
     def _build_completeness(self) -> tuple[CompletenessSlice, CompletenessSlice]:
         """
         Computes:
-          - issues: posters with any missing required files
-          - missing_files: total missing file count
-          - complete_fraction: (total - issues)/total
+        - issues: posters with any missing required files
+        - missing_files: total missing file count
+        - complete_fraction: (total - issues)/total
         """
         default = CompletenessSlice(issues=0, missing_files=0, complete_fraction=0.0, total_posters=0)
 
-        state = self._poster_index_state
-        if not state or not getattr(state, "is_loaded", False):
-            return default, default
-
-        snapshot = getattr(state, "snapshot", None) or {}
-        posters_by_source = snapshot.get("posters", {}) or {}
-
+        # Read directly from disk - bypass the broken state
+        from studiohub.models.poster_index import load_poster_index
+        index_path = self._cfg.get_poster_index_path()
+        data = load_poster_index(index_path)
+        
+        raw_posters = data.get("posters", {})
+        
+        # Normalize sources
         normalized: dict[str, dict] = {}
-        for src, posters in posters_by_source.items():
+        for src, posters in raw_posters.items():
             n = _normalize_source(src) or str(src).lower()
             normalized[n] = posters
 
         archive_stats = self._compute_source_completeness(normalized.get("archive", {}) or {}, source="archive")
         studio_stats = self._compute_source_completeness(normalized.get("studio", {}) or {}, source="studio")
+        
         return archive_stats, studio_stats
 
     def _compute_source_completeness(self, posters: dict, *, source: str) -> CompletenessSlice:
@@ -279,48 +310,43 @@ class DashboardService:
         issues = 0
         missing_files = 0
 
-        for _poster_id, meta in (posters or {}).items():
+        for poster_id, meta in (posters or {}).items():
             total += 1
             exists = (meta or {}).get("exists", {}) or {}
             sizes = (meta or {}).get("sizes", {}) or {}
 
             missing_for_poster = 0
 
-            # Master/Web basic expectations
+            # Check Master file
             if not exists.get("master", False):
                 missing_for_poster += 1
-            if not exists.get("web", False):
+
+            # Check Web files
+            web_status = exists.get("web", False)
+            if not web_status:
                 missing_for_poster += 1
 
-            # Archive semantics: size exists + backgrounds exist
-            if source == "archive":
-                for size_meta in sizes.values():
-                    if not (size_meta or {}).get("exists", False):
-                        backgrounds = (size_meta or {}).get("backgrounds", {}) or {}
-                        missing_for_poster += len(backgrounds)
-                        continue
-                    for bg_meta in (size_meta or {}).get("backgrounds", {}).values():
-                        if not (bg_meta or {}).get("exists", False):
-                            missing_for_poster += 1
-
-            # Studio semantics: one file per size
-            elif source == "studio":
-                for size_meta in sizes.values():
-                    if not (size_meta or {}).get("exists", False):
-                        missing_for_poster += 1
+            # Check each print size
+            for size in PRINT_SIZES:
+                size_meta = sizes.get(size, {})
+                
+                # Check if size exists (has any files)
+                if not size_meta.get("exists", False):
+                    missing_for_poster += 1
 
             if missing_for_poster > 0:
                 issues += 1
-            missing_files += missing_for_poster
+                missing_files += missing_for_poster
 
         frac = ((total - issues) / total) if total > 0 else 0.0
+        
         return CompletenessSlice(
             issues=int(issues),
             missing_files=int(missing_files),
             complete_fraction=float(max(0.0, min(1.0, frac))),
             total_posters=int(total),
         )
-    
+            
     def _build_studio_mood(
         self,
         *,

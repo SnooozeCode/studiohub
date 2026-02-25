@@ -1088,23 +1088,18 @@ class MainWindow(QtWidgets.QMainWindow):
     def _on_index_updated(self):
         """Handle incremental index update."""
         self._logger.debug("Index updated, refreshing dependent views")
-        print(f"[MAIN] ===== INDEX UPDATED at {datetime.now().strftime('%H:%M:%S')} =====")
         
         # Refresh models that depend on index
-        print("[MAIN] Refreshing missing model...")
         self._deps.missing_model.refresh("archive")
         self._deps.missing_model.refresh("studio")
         
-        print("[MAIN] Refreshing print manager model...")
         self._deps.print_manager_model.refresh("archive")
         self._deps.print_manager_model.refresh("studio")
         
-        print("[MAIN] Reloading mockup model...")
         self._deps.mockup_model.load_from_index("archive")
         self._deps.mockup_model.load_from_index("studio")
         
         # ===== FORCE DASHBOARD REFRESH =====
-        print("[MAIN] Refreshing dashboard...")
         self._refresh_dashboard_from_current_state()
         
     

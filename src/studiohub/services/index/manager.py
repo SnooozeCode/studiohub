@@ -16,9 +16,7 @@ from studiohub.services.index.watcher import IndexWatcher
 from studiohub.services.index.log import append_index_log
 
 from studiohub.utils import log_performance, get_logger
-
-# Import at runtime to avoid circular imports
-from studiohub.services.dashboard.service import CacheInvalidationReason
+from studiohub.services.dashboard.service import DashboardService, CacheInvalidationReason
 
 logger = get_logger(__name__)
 
@@ -44,7 +42,7 @@ class IndexManager(QtCore.QObject):
         config_manager: ConfigManager,
         status_callback: Optional[Callable[[str], None]] = None,
         dashboard_service: Optional['DashboardService'] = None,
-        poster_index_state: Optional['PosterIndexState'] = None,
+        poster_index_state: Optional[dict] = None,
         parent: QtCore.QObject | None = None,
     ):
         """
@@ -54,6 +52,7 @@ class IndexManager(QtCore.QObject):
             config_manager: Configuration manager
             status_callback: Optional callback for status messages
             dashboard_service: Optional dashboard service for cache invalidation
+            poster_index_state: Optional initial poster index state
             parent: Parent Qt object
         """
         super().__init__(parent)
@@ -130,10 +129,6 @@ class IndexManager(QtCore.QObject):
         if self._pending_invalidations:
             count = len(self._pending_invalidations)
             self._pending_invalidations.clear()
-            
-            # ===== CRITICAL: Reload the index state =====
-            if self._poster_index_state:
-                self._poster_index_state.reload()
             
             self._invalidate_dashboard_cache(CacheInvalidationReason.INDEX_CHANGED)
             logger.debug(f"Batch invalidated dashboard cache after {count} poster updates")
@@ -315,7 +310,7 @@ class IndexManager(QtCore.QObject):
             # Invalidate dashboard cache on successful index
             self._invalidate_dashboard_cache(CacheInvalidationReason.INDEX_CHANGED)
             
-            # ===== NEW: Emit general index update signal =====
+            # Emit general index update signal
             self.index_updated.emit()
             
             self._pending_result = None
@@ -328,10 +323,7 @@ class IndexManager(QtCore.QObject):
         Args:
             poster_path_str: Path to modified poster
         """
-        print(f"\n[MANAGER] 🟡 Received poster_dirty: {poster_path_str}")
-        
         if self._index_running:
-            print("[MANAGER] Index running, skipping")
             return
         
         poster_path = Path(poster_path_str)
@@ -340,17 +332,13 @@ class IndexManager(QtCore.QObject):
         # Debounce rapid updates
         last = self._recently_indexed.get(poster_path)
         if last and (now - last) < 2.0:
-            print(f"[MANAGER] Debouncing rapid update for {poster_path.name}")
             return
         
         self._recently_indexed[poster_path] = now
         self._emit_status(f"Poster changed: {poster_path.name}")
-        print(f"[MANAGER] Emitted status, now calling incremental worker")
         
         # Call the incremental worker directly
-        print(f"[MANAGER] Calling reindex_poster_by_path for {poster_path}")
-        result = self._incremental_worker.reindex_poster_by_path(poster_path)
-        print(f"[MANAGER] reindex_poster_by_path returned: {result}")
+        self._incremental_worker.reindex_poster_by_path(poster_path)
 
     @QtCore.Slot(str)
     def _on_poster_updated(self, poster_key: str) -> None:
@@ -360,37 +348,8 @@ class IndexManager(QtCore.QObject):
         Args:
             poster_key: Updated poster identifier
         """
-        print(f"[INDEX MANAGER] 🟢 Poster updated: {poster_key}")
         self.poster_updated.emit(poster_key)
         self._emit_status(f"Poster updated: {poster_key}")
-        
-        # ===== CRITICAL: Reload the index state =====
-        if self._poster_index_state:
-            self._poster_index_state.reload()  # Force reload from disk
-        
-        # Schedule batched cache invalidation
-        self._schedule_batch_invalidation(poster_key)
-        self.index_updated.emit()
-
-    def _reload_index_state(self) -> None:
-        """Reload the poster index state from disk."""
-        if self._poster_index_state:
-            print("[INDEX MANAGER] Reloading poster index state")
-            self._poster_index_state.reload()
-
-    def _on_poster_updated(self, poster_key: str) -> None:
-        """
-        Handle incremental poster update.
-        
-        Args:
-            poster_key: Updated poster identifier
-        """
-        print(f"[INDEX MANAGER] 🟢 Poster updated: {poster_key}")
-        self.poster_updated.emit(poster_key)
-        self._emit_status(f"Poster updated: {poster_key}")
-        
-        # ===== CRITICAL: Reload the index state =====
-        self._reload_index_state()
         
         # Schedule batched cache invalidation
         self._schedule_batch_invalidation(poster_key)
@@ -419,9 +378,6 @@ class IndexManager(QtCore.QObject):
             
             # Invalidate dashboard cache on successful index
             self._invalidate_dashboard_cache(CacheInvalidationReason.INDEX_CHANGED)
-            
-            # ===== CRITICAL: Reload the index state =====
-            self._reload_index_state()
             
             self.index_updated.emit()
             self._pending_result = None
