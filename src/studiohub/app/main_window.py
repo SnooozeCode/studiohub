@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import os
+import time
 import subprocess
 from datetime import datetime
 from pathlib import Path
@@ -106,8 +107,13 @@ class MainWindow(QtWidgets.QMainWindow):
     def _open_memory_monitor(self):
         """Open the memory monitor dialog."""
         from studiohub.ui.dialogs.memory_monitor import MemoryMonitorDialog
-        dialog = MemoryMonitorDialog(self)
-        dialog.show()  # Non-modal so you can keep it open
+        
+        # Pass the application start time (stored in main window)
+        if not hasattr(self, '_app_start_time'):
+            self._app_start_time = time.time()
+        
+        dialog = MemoryMonitorDialog(self, app_start_time=self._app_start_time)
+        dialog.show()
 
     def _add_memory_analysis_shortcut(self):
         """Add shortcut to analyze memory log (Ctrl+Shift+A)."""

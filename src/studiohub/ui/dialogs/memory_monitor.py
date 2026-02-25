@@ -21,7 +21,7 @@ from studiohub.style.typography.rules import apply_typography
 class MemoryMonitorDialog(QDialog):
     """Dialog showing detailed memory usage statistics."""
     
-    def __init__(self, parent=None):
+    def __init__(self, parent=None, app_start_time=None):
         super().__init__(parent)
         self.setWindowTitle("Memory Monitor")
         self.setModal(False)
@@ -30,8 +30,12 @@ class MemoryMonitorDialog(QDialog):
         
         self._process = psutil.Process(os.getpid())
         self._history: list[float] = []
-        self._max_history = 60  # Keep last 60 samples
-        self._start_time = time.time()  # Track when dialog was opened
+        self._max_history = 60
+
+        if app_start_time:
+            self._start_time = app_start_time
+        else:
+            self._start_time = time.time()
         
         self._setup_ui()
         self._setup_timer()
