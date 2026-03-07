@@ -7,7 +7,8 @@ from datetime import datetime
 import weakref
 from functools import wraps
 
-from studiohub.utils.logging.core import get_logger
+from .core import get_logger
+
 
 
 # Cache for both decorators
