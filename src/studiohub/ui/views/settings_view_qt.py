@@ -57,6 +57,7 @@ class SettingsViewQt(QtWidgets.QFrame):
         self.get_theme_tokens = get_theme_tokens
         self.config = config_manager
         self.paper_ledger = paper_ledger
+        self.section_exclusions = self._build_section_exclusions()
 
         # =================================================
         # STATE
@@ -196,7 +197,6 @@ class SettingsViewQt(QtWidgets.QFrame):
 
         root.addLayout(footer)
 
-
         # -------------------------------------------------
         # Scroll content layout
         # -------------------------------------------------
@@ -210,6 +210,7 @@ class SettingsViewQt(QtWidgets.QFrame):
             self.section_appearance,
             self.section_printing,
             self.section_operations,
+            self.section_exclusions,
             self.section_debug,
         ]
 
@@ -1282,3 +1283,84 @@ class SettingsViewQt(QtWidgets.QFrame):
                     "Error",
                     f"Failed to archive logs: {e}"
                 )
+
+                # Add this method to SettingsViewQt class
+
+    def _build_section_exclusions(self):
+        """Build poster exclusion management section."""
+        from studiohub.ui.widgets.exclusion_manager import ExclusionManager
+        
+        self.exclusion_manager = ExclusionManager(
+            config_manager=self.config,
+            parent=self
+        )
+        
+        # Connect changed signal to refresh
+        self.exclusion_manager.changed.connect(self._on_exclusions_changed)
+        
+        # Create a custom layout with the two-column structure
+        wrapper = QtWidgets.QWidget()
+        wrapper.setAttribute(Qt.WA_StyledBackground, True)
+        wrapper.setProperty("role", "section")
+        
+        grid = QtWidgets.QGridLayout(wrapper)
+        grid.setContentsMargins(0, 0, 0, 0)
+        grid.setHorizontalSpacing(32)
+        grid.setVerticalSpacing(0)
+        grid.setColumnStretch(0, 4)  # Left column
+        grid.setColumnStretch(1, 7)  # Right column
+        
+        # Left column: Title and description
+        left_col = QtWidgets.QVBoxLayout()
+        left_col.setContentsMargins(0, 18, 0, 0)
+        left_col.setSpacing(6)
+        
+        lbl_title = QtWidgets.QLabel("Poster Exclusions")
+        lbl_title.setProperty("role", "section-title")
+        apply_typography(lbl_title, "h3")
+        lbl_title.setAttribute(Qt.WA_SetFont, True)
+        
+        lbl_desc = QtWidgets.QLabel(
+            "Mark posters that are intentionally not offered in certain sizes. "
+            "Excluded sizes won't count as missing files."
+        )
+        lbl_desc.setProperty("role", "muted")
+        apply_typography(lbl_desc, "caption")
+        lbl_desc.setAttribute(Qt.WA_SetFont, True)
+        lbl_desc.setWordWrap(True)
+        
+        left_col.addWidget(lbl_title)
+        left_col.addWidget(lbl_desc)
+        
+        # Right column: The exclusion manager (now with table headers)
+        right_col = QtWidgets.QVBoxLayout()
+        right_col.setContentsMargins(0, 18, 0, 0)
+        right_col.setSpacing(0)
+        right_col.addWidget(self.exclusion_manager)
+        
+        # Add to grid
+        grid.addLayout(left_col, 0, 0, Qt.AlignTop)
+        grid.addLayout(right_col, 0, 1)
+        
+        # Add divider at the bottom
+        divider = QtWidgets.QFrame()
+        divider.setFrameShape(QtWidgets.QFrame.HLine)
+        divider.setFixedHeight(1)
+        divider.setProperty("role", "section-divider")
+        divider.setAttribute(Qt.WA_StyledBackground, True)
+        
+        container = QtWidgets.QWidget()
+        container_layout = QtWidgets.QVBoxLayout(container)
+        container_layout.setContentsMargins(0, 0, 0, 0)
+        container_layout.setSpacing(0)
+        container_layout.addWidget(wrapper)
+        container_layout.addWidget(divider)
+        
+        return container
+    
+    def _on_exclusions_changed(self):
+        """Handle exclusions change - refresh views that depend on exclusions."""
+        # Emit signal to refresh missing files view and dashboard
+        main_window = self.window()
+        if main_window and hasattr(main_window, '_refresh_all'):
+            main_window._refresh_all()

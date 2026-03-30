@@ -2,7 +2,7 @@
 
 import json
 from pathlib import Path
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Set
 
 from PySide6 import QtCore
 
@@ -23,11 +23,6 @@ EXPECTED_PATENT_BG: Tuple[Tuple[str, str], ...] = tuple(
 class MissingFilesModelQt(QtCore.QObject):
     """
     Missing Files Model (v3.2)
-
-    Contract:
-    - NEVER scans filesystem directly.
-    - Reads ONLY poster_index.json (cache_version=2).
-    - Emits view-shaped data that contains ALL posters with their missing status.
     """
 
     scan_started = QtCore.Signal(str)            # source
@@ -39,6 +34,15 @@ class MissingFilesModelQt(QtCore.QObject):
         self.config_manager = config_manager
         self._cache_archive: Dict[str, Any] = {}
         self._cache_studio: Dict[str, Any] = {}
+
+    # -------------------------------------------------
+    # Get exclusions for a source
+    # -------------------------------------------------
+
+    def _get_exclusions(self, source: str) -> Dict[str, Set[str]]:
+        """Get excluded sizes for all posters in a source."""
+        exclusions = self.config_manager.get("poster_exclusions", source, {})
+        return {poster_key: set(excluded_sizes) for poster_key, excluded_sizes in exclusions.items()}
 
     # -------------------------------------------------
     # Cache access
@@ -63,16 +67,17 @@ class MissingFilesModelQt(QtCore.QObject):
 
         try:
             index = self._load_index()
+            exclusions = self._get_exclusions(source)
             
             if source == "archive":
-                new_data = self._build_archive_status(index)
+                new_data = self._build_archive_status(index, exclusions)
                 
                 # Check if data changed
                 if str(self._cache_archive) != str(new_data):
                     self._cache_archive = new_data
                     
             else:  # studio
-                new_data = self._build_studio_status(index)
+                new_data = self._build_studio_status(index, exclusions)
                 
                 # Check if data changed
                 if str(self._cache_studio) != str(new_data):
@@ -107,11 +112,11 @@ class MissingFilesModelQt(QtCore.QObject):
         return data
 
     # -------------------------------------------------
-    # Status Builders (for ALL posters)
+    # Status Builders (with exclusions)
     # -------------------------------------------------
 
-    def _build_archive_status(self, index: Dict[str, Any]) -> Dict[str, Any]:
-        """Build status data for ALL archive posters."""
+    def _build_archive_status(self, index: Dict[str, Any], exclusions: Dict[str, Set[str]]) -> Dict[str, Any]:
+        """Build status data for ALL archive posters, respecting exclusions."""
         posters = (index.get("posters") or {}).get("archive") or {}
         out: Dict[str, Any] = {}
 
@@ -122,6 +127,9 @@ class MissingFilesModelQt(QtCore.QObject):
             display_name = (meta.get("display_name") or folder_name).strip()
             sizes_meta = meta.get("sizes") or {}
             exists = meta.get("exists") or {}
+            
+            # Get excluded sizes for this poster
+            excluded_sizes = exclusions.get(folder_name, set())
 
             # Track what's missing
             missing = {
@@ -133,6 +141,10 @@ class MissingFilesModelQt(QtCore.QObject):
 
             # Check each size
             for size in PRINT_SIZES:
+                # Skip excluded sizes - they are not considered missing
+                if size in excluded_sizes:
+                    continue
+                    
                 sm = sizes_meta.get(size) or {}
                 
                 # Check if size has any output
@@ -183,8 +195,8 @@ class MissingFilesModelQt(QtCore.QObject):
 
         return {k: out[k] for k in sorted(out.keys(), key=lambda x: x.lower())}
 
-    def _build_studio_status(self, index: Dict[str, Any]) -> Dict[str, Any]:
-        """Build status data for ALL studio posters."""
+    def _build_studio_status(self, index: Dict[str, Any], exclusions: Dict[str, Set[str]]) -> Dict[str, Any]:
+        """Build status data for ALL studio posters, respecting exclusions."""
         posters = index.get("posters", {}).get("studio", {})
         out: Dict[str, Any] = {}
 
@@ -195,6 +207,9 @@ class MissingFilesModelQt(QtCore.QObject):
             display_name = (meta.get("display_name") or folder_name).strip()
             sizes_meta = meta.get("sizes") or {}
             exists = meta.get("exists") or {}
+            
+            # Get excluded sizes for this poster
+            excluded_sizes = exclusions.get(folder_name, set())
 
             missing = {
                 "master": not bool(exists.get("master", False)),
@@ -203,6 +218,10 @@ class MissingFilesModelQt(QtCore.QObject):
             }
 
             for size in PRINT_SIZES:
+                # Skip excluded sizes - they are not considered missing
+                if size in excluded_sizes:
+                    continue
+                    
                 sm = sizes_meta.get(size) or {}
                 
                 files = sm.get("files") or []

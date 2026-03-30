@@ -50,5 +50,11 @@ DEFAULT_CONFIG: Dict[str, Any] = {
         "ink_reset_percent": 100,
         "ink_reset_at": "25"
     },
+    "poster_exclusions": {
+        "archive": {},
+        "studio": {},
+    },
+    "ui": {
+        "show_excluded_as_missing": False,
+    },
 }
-

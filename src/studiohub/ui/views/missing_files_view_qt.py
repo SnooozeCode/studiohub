@@ -90,7 +90,7 @@ class MissingFilesViewQt(QtWidgets.QFrame):
     refresh_requested = QtCore.Signal(str)
     source_changed = QtCore.Signal(str)
 
-    def __init__(self, parent: Optional[QtWidgets.QWidget] = None):
+    def __init__(self, config_manager=None, parent: Optional[QtWidgets.QWidget] = None):
         super().__init__(parent)
 
         # =================================================
@@ -100,6 +100,7 @@ class MissingFilesViewQt(QtWidgets.QFrame):
         self.setAttribute(QtCore.Qt.WA_StyledBackground, True)
         self._active_source = "archive"
 
+        self._config = config_manager
         # =================================================
         # STATE
         # =================================================
@@ -542,6 +543,15 @@ class MissingFilesViewQt(QtWidgets.QFrame):
         
         return result
 
+    def _get_excluded_sizes(self, poster_key: str) -> set:
+        """Get excluded sizes for a poster from config."""
+        if not self._config:
+            return set()
+        
+        source_exclusions = self._config.get("poster_exclusions", self._source, {})
+        excluded = source_exclusions.get(poster_key, [])
+        return set(excluded)
+
     def _render(self) -> None:
         """Render the tree with optimizations."""
         if self._is_rendering:
@@ -608,6 +618,9 @@ class MissingFilesViewQt(QtWidgets.QFrame):
                     # Get missing data for this poster (empty dict if none)
                     missing = current_data.get(folder, {}).get("missing", {})
                     
+                    # ===== GET EXCLUDED SIZES FOR THIS POSTER =====
+                    excluded_sizes = self._get_excluded_sizes(folder)
+                    
                     # Master status
                     exists = meta.get("exists", {})
                     has_master = bool(exists.get("master", False))
@@ -628,6 +641,13 @@ class MissingFilesViewQt(QtWidgets.QFrame):
                     missing_sizes = set(missing.get("sizes") or [])
 
                     for idx, size in enumerate(PRINT_SIZES, start=3):
+                        # If size is excluded, show checkmark and skip
+                        if size in excluded_sizes:
+                            parent.setIcon(idx, ok_icon)
+                            parent.setText(idx, "")
+                            parent.setTextAlignment(idx, Qt.AlignCenter)
+                            continue
+                        
                         size_meta = sizes_meta.get(size, {})
                         
                         if self._source == "archive":
@@ -679,6 +699,13 @@ class MissingFilesViewQt(QtWidgets.QFrame):
                             missing_bg_sizes = set(missing_bgs.get(bg_key, {}).get("sizes", []))
 
                             for idx, size in enumerate(PRINT_SIZES, start=3):
+                                # If size is excluded, show checkmark
+                                if size in excluded_sizes:
+                                    child.setIcon(idx, ok_icon)
+                                    child.setText(idx, "")
+                                    child.setTextAlignment(idx, Qt.AlignCenter)
+                                    continue
+                                
                                 size_meta = sizes_meta.get(size, {})
                                 bgs = size_meta.get("backgrounds", {})
                                 bg_exists = bg_key in bgs and bgs[bg_key].get("exists", False)

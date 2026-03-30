@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import TypedDict, Dict
+from typing import TypedDict, Dict, List
 
 
 # ============================
@@ -55,6 +55,16 @@ class ConsumablesConfig(TypedDict):
     ink_reset_at: str
 
 
+class PosterExclusionsConfig(TypedDict):
+    """Posters that are intentionally not offered in certain sizes."""
+    archive: Dict[str, List[str]]  # poster_key -> list of excluded sizes
+    studio: Dict[str, List[str]]
+
+
+class UiConfig(TypedDict):
+    show_excluded_as_missing: bool
+
+
 # ============================
 # Root schema
 # ============================
@@ -67,3 +77,5 @@ class AppConfig(TypedDict):
     print_manager: PrintManagerConfig
     printing: PrintingConfig
     consumables: ConsumablesConfig
+    poster_exclusions: PosterExclusionsConfig
+    ui: UiConfig

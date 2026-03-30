@@ -309,35 +309,43 @@ class DashboardService:
         total = 0
         issues = 0
         missing_files = 0
-
+        
+        # Get exclusions for this source
+        exclusions = self._cfg.get("poster_exclusions", source, {})
+        
         for poster_id, meta in (posters or {}).items():
             total += 1
             exists = (meta or {}).get("exists", {}) or {}
             sizes = (meta or {}).get("sizes", {}) or {}
-
+            
+            excluded_sizes = set(exclusions.get(poster_id, []))
+            
             missing_for_poster = 0
-
-            # Check Master file
+            
+            # Check Master file (always required)
             if not exists.get("master", False):
                 missing_for_poster += 1
-
-            # Check Web files
+            
+            # Check Web files (always required)
             web_status = exists.get("web", False)
             if not web_status:
                 missing_for_poster += 1
-
-            # Check each print size
+            
+            # Check each print size (skip excluded)
             for size in PRINT_SIZES:
+                if size in excluded_sizes:
+                    continue  # Skip excluded sizes
+                
                 size_meta = sizes.get(size, {})
                 
                 # Check if size exists (has any files)
                 if not size_meta.get("exists", False):
                     missing_for_poster += 1
-
+            
             if missing_for_poster > 0:
                 issues += 1
                 missing_files += missing_for_poster
-
+        
         frac = ((total - issues) / total) if total > 0 else 0.0
         
         return CompletenessSlice(
