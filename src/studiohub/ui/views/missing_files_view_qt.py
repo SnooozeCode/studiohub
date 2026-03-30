@@ -398,6 +398,7 @@ class MissingFilesViewQt(QtWidgets.QFrame):
 
     def set_data(self, source: str, data: Dict[str, Any]) -> None:
         """Set missing data and trigger render."""
+        print(f"[DEBUG] set_data called for {source}, data keys: {list(data.keys())[:5]}...")
         self._data[source] = data or {}
         
         # Only update UI if this is the current source
@@ -405,6 +406,18 @@ class MissingFilesViewQt(QtWidgets.QFrame):
             self.lbl_status.setVisible(False)
             
             if data:
+                # Check if any poster has backgrounds
+                has_backgrounds = False
+                for folder, info in data.items():
+                    missing = info.get("missing", {})
+                    if missing.get("backgrounds"):
+                        has_backgrounds = True
+                        print(f"[DEBUG] Poster {folder} has backgrounds: {list(missing.get('backgrounds', {}).keys())}")
+                        break
+                
+                if has_backgrounds:
+                    print("[DEBUG] Data contains backgrounds, will show children")
+                
                 self.lbl_empty.setVisible(False)
                 self.tree.setVisible(True)
                 # Defer render to avoid blocking
@@ -552,25 +565,21 @@ class MissingFilesViewQt(QtWidgets.QFrame):
         excluded = source_exclusions.get(poster_key, [])
         return set(excluded)
 
+
     def _render(self) -> None:
         """Render the tree with optimizations."""
         if self._is_rendering:
             self._pending_refresh = True
             return
 
-        # Get data for current source
         current_data = self._data.get(self._source, {})
         
-        # Even if current_data is empty, we still want to render all posters
-        # with checkmarks (meaning nothing is missing)
-
         self._is_rendering = True
         self._pending_refresh = False
 
         try:
             state = self._capture_tree_state()
 
-            # Block signals and updates for faster population
             self.tree.setUpdatesEnabled(False)
             self.tree.blockSignals(True)
             
@@ -584,44 +593,32 @@ class MissingFilesViewQt(QtWidgets.QFrame):
                 )
                 
                 if not posters:
-                    # If no posters in index, show empty state
                     self.lbl_empty.setText(f"No {self._source} posters found in index")
                     self.lbl_empty.setVisible(True)
                     self.tree.setVisible(False)
                     self.lbl_status.setVisible(False)
                     return
 
-                # Pre-calculate colors for performance
                 ok_color = self._resolve_token_color("text_primary", fallback=QtGui.QPalette.Text)
                 missing_color = self._resolve_token_color("accent", fallback=QtGui.QPalette.Highlight)
                 
-                # Pre-create frequently used icons
                 ok_icon = _get_cached_icon("status_ok", ok_color)
                 missing_icon = _get_cached_icon("status_missing", missing_color)
 
-                # Sort folders once
                 sorted_folders = sorted(posters.keys(), key=str.lower)
                 
-                items_added = False
-
                 for folder in sorted_folders:
                     meta = posters[folder]
                     if not isinstance(meta, dict):
                         continue
-                    
-                    items_added = True
 
                     display_name = meta.get("display_name", folder)
                     parent = QtWidgets.QTreeWidgetItem(self.tree)
                     parent.setText(0, display_name)
 
-                    # Get missing data for this poster (empty dict if none)
                     missing = current_data.get(folder, {}).get("missing", {})
-                    
-                    # ===== GET EXCLUDED SIZES FOR THIS POSTER =====
                     excluded_sizes = self._get_excluded_sizes(folder)
                     
-                    # Master status
                     exists = meta.get("exists", {})
                     has_master = bool(exists.get("master", False))
                     master_ok = has_master and not missing.get("master", False)
@@ -629,19 +626,16 @@ class MissingFilesViewQt(QtWidgets.QFrame):
                     parent.setText(1, "")
                     parent.setTextAlignment(1, Qt.AlignCenter)
 
-                    # Web status
                     has_web = bool(exists.get("web", False))
                     web_ok = has_web and not missing.get("web", False)
                     parent.setIcon(2, ok_icon if web_ok else missing_icon)
                     parent.setText(2, "")
                     parent.setTextAlignment(2, Qt.AlignCenter)
 
-                    # Size statuses
                     sizes_meta = meta.get("sizes", {})
                     missing_sizes = set(missing.get("sizes") or [])
 
                     for idx, size in enumerate(PRINT_SIZES, start=3):
-                        # If size is excluded, show checkmark and skip
                         if size in excluded_sizes:
                             parent.setIcon(idx, ok_icon)
                             parent.setText(idx, "")
@@ -653,72 +647,105 @@ class MissingFilesViewQt(QtWidgets.QFrame):
                         if self._source == "archive":
                             # Archive: check if size exists and has backgrounds
                             size_exists = size_meta.get("exists", False)
-                            size_missing = size in missing_sizes
-                            
-                            # Also check backgrounds
                             bgs = size_meta.get("backgrounds", {})
                             has_any_bg = any(
                                 isinstance(bg_rec, dict) and bg_rec.get("exists") is True
                                 for bg_rec in bgs.values()
                             )
-                            
-                            ok = size_exists and has_any_bg and not size_missing
+                            ok = size_exists and has_any_bg and size not in missing_sizes
                         else:
-                            # Studio: check if size has files
-                            files = size_meta.get("files", [])
-                            has_files = isinstance(files, list) and len(files) > 0
-                            size_missing = size in missing_sizes
-                            ok = has_files and not size_missing
+                            # Studio: check if size exists
+                            ok = size_meta.get("exists", False) and size not in missing_sizes
 
                         parent.setIcon(idx, ok_icon if ok else missing_icon)
                         parent.setText(idx, "")
                         parent.setTextAlignment(idx, Qt.AlignCenter)
 
-                    # Add children for archive source (backgrounds)
-                    if self._source == "archive":
+                    # ===== ADD CHILDREN FOR BACKGROUNDS/VARIANTS =====
+                    # For archive, we need to check ALL backgrounds, not just missing ones
+                    # Get the size metadata to find what backgrounds exist
+                    all_backgrounds = set()
+                    
+                    # Collect all backgrounds from all sizes
+                    for size in PRINT_SIZES:
+                        if size in excluded_sizes:
+                            continue
+                        size_meta = sizes_meta.get(size, {})
+                        backgrounds = size_meta.get("backgrounds", {})
+                        for bg_key, bg_rec in backgrounds.items():
+                            if isinstance(bg_rec, dict) and bg_rec.get("exists", False):
+                                all_backgrounds.add((bg_key, bg_rec.get("label", bg_key)))
+                    
+                    # Also check missing backgrounds if they exist in the missing data
+                    missing_bgs = missing.get("backgrounds", {})
+                    
+                    # Combine all backgrounds we know about
+                    backgrounds_to_show = {}
+                    
+                    # Add backgrounds from index
+                    for bg_key, bg_label in all_backgrounds:
+                        backgrounds_to_show[bg_key] = {
+                            "label": bg_label,
+                            "sizes": []
+                        }
+                    
+                    # Add any missing backgrounds that might not be in the index
+                    for bg_key, bg_data in missing_bgs.items():
+                        if bg_key not in backgrounds_to_show:
+                            backgrounds_to_show[bg_key] = {
+                                "label": bg_data.get("label", bg_key),
+                                "sizes": []
+                            }
+                    
+                    # Now create child items for each background
+                    if backgrounds_to_show:
                         parent.setChildIndicatorPolicy(QtWidgets.QTreeWidgetItem.ShowIndicator)
-
-                        # Get missing backgrounds for this poster
-                        missing_bgs = missing.get("backgrounds", {})
                         
-                        # Collect all backgrounds from all sizes
-                        all_bgs = {}
-                        for size in PRINT_SIZES:
-                            size_meta = sizes_meta.get(size, {})
-                            bgs = size_meta.get("backgrounds", {})
-                            for bg_key, bg_rec in bgs.items():
-                                if bg_key not in all_bgs:
-                                    all_bgs[bg_key] = bg_rec.get("label", bg_key)
-
-                        # Sort backgrounds
-                        for bg_key, bg_label in sorted(all_bgs.items(), key=lambda x: x[1].lower()):
+                        # Sort backgrounds alphabetically by label
+                        sorted_backgrounds = sorted(
+                            backgrounds_to_show.items(),
+                            key=lambda x: x[1]["label"].lower()
+                        )
+                        
+                        for bg_key, bg_info in sorted_backgrounds:
+                            bg_label = bg_info["label"]
                             child = QtWidgets.QTreeWidgetItem(parent)
                             child.setText(0, bg_label)
-
-                            # Check which sizes this background exists in
-                            missing_bg_sizes = set(missing_bgs.get(bg_key, {}).get("sizes", []))
-
+                            
+                            # Check each size for this background
                             for idx, size in enumerate(PRINT_SIZES, start=3):
-                                # If size is excluded, show checkmark
                                 if size in excluded_sizes:
                                     child.setIcon(idx, ok_icon)
                                     child.setText(idx, "")
                                     child.setTextAlignment(idx, Qt.AlignCenter)
                                     continue
                                 
+                                # Check if this background exists for this size
                                 size_meta = sizes_meta.get(size, {})
-                                bgs = size_meta.get("backgrounds", {})
-                                bg_exists = bg_key in bgs and bgs[bg_key].get("exists", False)
+                                backgrounds = size_meta.get("backgrounds", {})
                                 
-                                ok = bg_exists and size not in missing_bg_sizes
+                                bg_exists = False
+                                if bg_key in backgrounds:
+                                    bg_rec = backgrounds[bg_key]
+                                    if isinstance(bg_rec, dict):
+                                        bg_exists = bg_rec.get("exists", False)
+                                
+                                # Check if it's marked as missing in the missing data
+                                is_marked_missing = False
+                                if bg_key in missing_bgs:
+                                    missing_sizes_for_bg = set(missing_bgs[bg_key].get("sizes", []))
+                                    if size in missing_sizes_for_bg:
+                                        is_marked_missing = True
+                                
+                                # Icon is OK if it exists and NOT marked as missing
+                                ok = bg_exists and not is_marked_missing
                                 
                                 child.setIcon(idx, ok_icon if ok else missing_icon)
                                 child.setText(idx, "")
                                 child.setTextAlignment(idx, Qt.AlignCenter)
-
+                        
                         parent.setExpanded(False)
 
-                # Hide empty state, show tree
                 self.lbl_empty.setVisible(False)
                 self.tree.setVisible(True)
                 self.lbl_status.setVisible(False)
@@ -727,14 +754,12 @@ class MissingFilesViewQt(QtWidgets.QFrame):
                 self.tree.blockSignals(False)
                 self.tree.setUpdatesEnabled(True)
 
-            # Restore state
             self._restore_tree_state(state)
             self.tree.viewport().update()
 
         finally:
             self._is_rendering = False
 
-        # Handle any pending refreshes
         if self._pending_refresh:
             QtCore.QTimer.singleShot(0, self._render)
 

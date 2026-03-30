@@ -58,7 +58,6 @@ class MissingFilesModelQt(QtCore.QObject):
     # -------------------------------------------------
     # Refresh
     # -------------------------------------------------
-
     def refresh(self, source: str) -> None:
         if source not in ("archive", "studio"):
             return
@@ -66,28 +65,42 @@ class MissingFilesModelQt(QtCore.QObject):
         self.scan_started.emit(source)
 
         try:
+            print(f"[DEBUG] Loading index for {source}...")
             index = self._load_index()
+            print(f"[DEBUG] Index loaded, has {len(index.get('posters', {}).get(source, {}))} posters")
+            
             exclusions = self._get_exclusions(source)
             
             if source == "archive":
+                print("[DEBUG] Building archive status...")
                 new_data = self._build_archive_status(index, exclusions)
                 
-                # Check if data changed
+                # Compare safely
                 if str(self._cache_archive) != str(new_data):
                     self._cache_archive = new_data
                     
             else:  # studio
+                print("[DEBUG] Building studio status...")
                 new_data = self._build_studio_status(index, exclusions)
+                print(f"[DEBUG] Studio status built, has {len(new_data)} posters")
                 
-                # Check if data changed
-                if str(self._cache_studio) != str(new_data):
+                # Compare safely
+                try:
+                    if self._cache_studio != new_data:
+                        self._cache_studio = new_data
+                except TypeError as e:
+                    print(f"[DEBUG] Comparison error: {e}, assuming changed")
                     self._cache_studio = new_data
 
             # Emit the data from cache
             cache_data = self.get_cache(source)
+            print(f"[DEBUG] Emitting data for {source}, {len(cache_data)} posters")
             self.scan_finished.emit(source, cache_data)
 
         except Exception as e:
+            import traceback
+            print(f"[ERROR] in refresh for {source}: {e}")
+            traceback.print_exc()
             self.scan_error.emit(source, str(e))
 
     # -------------------------------------------------
@@ -195,9 +208,13 @@ class MissingFilesModelQt(QtCore.QObject):
 
         return {k: out[k] for k in sorted(out.keys(), key=lambda x: x.lower())}
 
+
+
     def _build_studio_status(self, index: Dict[str, Any], exclusions: Dict[str, Set[str]]) -> Dict[str, Any]:
-        """Build status data for ALL studio posters, respecting exclusions."""
+        """Build status data for studio posters, including ALL variants."""
         posters = index.get("posters", {}).get("studio", {})
+        print(f"[DEBUG] _build_studio_status: Found {len(posters)} studio posters")
+        
         out: Dict[str, Any] = {}
 
         for folder_name, meta in sorted(posters.items(), key=lambda kv: kv[0].lower()):
@@ -208,31 +225,81 @@ class MissingFilesModelQt(QtCore.QObject):
             sizes_meta = meta.get("sizes") or {}
             exists = meta.get("exists") or {}
             
-            # Get excluded sizes for this poster
             excluded_sizes = exclusions.get(folder_name, set())
 
             missing = {
                 "master": not bool(exists.get("master", False)),
                 "web": not bool(exists.get("web", False)),
-                "sizes": []
+                "sizes": [],
+                "backgrounds": {}  # This will store ALL variants with their missing sizes
             }
 
+            # First, collect ALL variants across all sizes
+            all_variants = {}
             for size in PRINT_SIZES:
-                # Skip excluded sizes - they are not considered missing
                 if size in excluded_sizes:
                     continue
                     
-                sm = sizes_meta.get(size) or {}
+                size_meta = sizes_meta.get(size) or {}
+                backgrounds = size_meta.get("backgrounds") or {}
                 
-                files = sm.get("files") or []
-                has_files = isinstance(files, list) and len(files) > 0
+                for variant_key, variant_rec in backgrounds.items():
+                    if not isinstance(variant_rec, dict):
+                        continue
+                    
+                    variant_key_str = str(variant_key)
+                    if variant_key_str not in all_variants:
+                        all_variants[variant_key_str] = {
+                            "label": str(variant_rec.get("label", variant_key_str)),
+                            "sizes": []  # Will populate with sizes where this variant EXISTS
+                        }
+                    # Add this size to the variant's list of existing sizes
+                    all_variants[variant_key_str]["sizes"].append(size)
+
+            # Now, for EACH variant, determine which sizes it's missing from
+            # This ensures ALL variants appear in the backgrounds dictionary
+            for variant_key_str, variant_info in all_variants.items():
+                existing_sizes = set(variant_info["sizes"])
                 
-                if not has_files:
-                    missing["sizes"].append(size)
+                # Initialize this variant in missing["backgrounds"]
+                missing["backgrounds"][variant_key_str] = {
+                    "label": variant_info["label"],
+                    "sizes": []  # Will store sizes where this variant is MISSING
+                }
+                
+                # Check each size for this variant
+                for size in PRINT_SIZES:
+                    if size in excluded_sizes:
+                        continue
+                    
+                    # If the variant doesn't exist for this size, it's missing
+                    if size not in existing_sizes:
+                        missing["backgrounds"][variant_key_str]["sizes"].append(size)
+
+            # Also track which sizes are completely missing (no variants at all)
+            for size in PRINT_SIZES:
+                if size in excluded_sizes:
+                    continue
+                    
+                size_meta = sizes_meta.get(size) or {}
+                backgrounds = size_meta.get("backgrounds") or {}
+                
+                # If size has no variants at all, mark it as missing
+                if not backgrounds:
+                    if not size_meta.get("exists", False):
+                        missing["sizes"].append(size)
+                else:
+                    # Size has variants - check if any exist
+                    has_any_variant = any(
+                        isinstance(bg_rec, dict) and bg_rec.get("exists") is True
+                        for bg_rec in backgrounds.values()
+                    )
+                    if not has_any_variant:
+                        missing["sizes"].append(size)
 
             out[folder_name] = {
                 "display_name": display_name,
                 "missing": missing,
             }
 
-        return {k: out[k] for k in sorted(out.keys(), key=lambda x: x.lower())}
+        return out

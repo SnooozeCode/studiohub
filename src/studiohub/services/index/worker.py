@@ -62,8 +62,8 @@ class PosterIndexWorker(QtCore.QObject):
         studio_root = Path(self.config_manager.get("paths", "studio_root"))
 
         posters = {
-            "archive": self._scan_root(archive_root),
-            "studio": self._scan_root(studio_root),
+            "archive": self._scan_root(archive_root, source="archive"),
+            "studio": self._scan_root(studio_root, source="studio"),
         }
 
         self.index = {
@@ -82,12 +82,10 @@ class PosterIndexWorker(QtCore.QObject):
     def reindex_poster_by_path(self, poster_path: Path) -> bool:
         """Reindex a single poster by its filesystem path."""
         try:
-            
             if self.index is None:
                 self._load_index()
 
             key = poster_path.name
-            
             source = self._resolve_source(poster_path)
             
             if not source:
@@ -109,13 +107,17 @@ class PosterIndexWorker(QtCore.QObject):
                     else:
                         print(f"  Subdirectory: {f.name} (ignored)")
             
-            
             # Check current index value before scanning
             if self.index and source in self.index.get("posters", {}):
                 current_poster = self.index["posters"][source].get(key, {})
                 current_web = current_poster.get("exists", {}).get("web", False)
 
-            poster_data = scan_single_poster(poster_path)
+            # Pass config_manager to scanner for studio variants
+            # For studio posters, pass config_manager; for archive, pass None
+            poster_data = scan_single_poster(
+                poster_path, 
+                config_manager=self.config_manager if source == "studio" else None
+            )
             new_web = poster_data.get("exists", {}).get("web", False)
 
             # Update index
@@ -133,6 +135,7 @@ class PosterIndexWorker(QtCore.QObject):
             import traceback
             traceback.print_exc()
             return False
+    
     # -------------------------------------------------
     # Helpers
     # -------------------------------------------------
@@ -156,19 +159,50 @@ class PosterIndexWorker(QtCore.QObject):
         
         return max_ns
 
-    def _scan_root(self, root: Path) -> Dict[str, dict]:
-        """Scan a root directory for posters."""
+    def _scan_root(self, root: Path, source: str) -> Dict[str, dict]:
+        """Scan a root directory for posters.
+        
+        Args:
+            root: Root directory to scan
+            source: "archive" or "studio" - determines if we pass config_manager
+        """
         out = {}
         if not root.exists():
             return out
 
+        print(f"[WORKER] Scanning {source} root: {root}")
+        
+        # Only pass config_manager for studio posters
+        config_to_pass = self.config_manager if source == "studio" else None
+        
+        # DEBUG: Print what we're passing
+        print(f"[WORKER] {source} - config_to_pass = {config_to_pass is not None}")
+
         for d in root.iterdir():
             if d.is_dir():
-                data = scan_single_poster(d)
-                fingerprint = self._poster_fingerprint(d)
-                data["mtime"] = fingerprint
-                out[d.name] = data
-                self.mtime_cache["dirs"][str(d)] = fingerprint
+                print(f"[WORKER]   Scanning poster: {d.name}")
+                try:
+                    data = scan_single_poster(d, config_manager=config_to_pass)
+                    
+                    if not isinstance(data, dict):
+                        print(f"[WORKER]     ERROR: scan_single_poster returned non-dict: {type(data)}")
+                        continue
+                        
+                    fingerprint = self._poster_fingerprint(d)
+                    data["mtime"] = fingerprint
+                    
+                    dir_key = str(d)
+                    if "dirs" not in self.mtime_cache:
+                        self.mtime_cache["dirs"] = {}
+                    
+                    self.mtime_cache["dirs"][dir_key] = fingerprint
+                    out[d.name] = data
+                    
+                except Exception as e:
+                    print(f"[WORKER]     ERROR scanning {d.name}: {e}")
+                    import traceback
+                    traceback.print_exc()
+                    continue
 
         return out
 

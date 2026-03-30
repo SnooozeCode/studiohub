@@ -42,11 +42,14 @@ def write_config(path: Path, data: Dict[str, Any]) -> None:
 
 def merge_defaults(data: Dict[str, Any]) -> Dict[str, Any]:
     merged = deepcopy(DEFAULT_CONFIG)
-
+    print(f"[IO DEBUG] Merging config data of type: {type(data)}")
+    
     for section, values in data.items():
+        print(f"[IO DEBUG]   Section: {section}, values type: {type(values)}")
         if isinstance(values, dict):
             merged.setdefault(section, {}).update(values)
         else:
             merged[section] = values
-
+    
+    print(f"[IO DEBUG] After merge, studio_variants: {merged.get('studio_variants', {})}")
     return merged

@@ -93,6 +93,7 @@ class IndexManager(QtCore.QObject):
     
     def _emit_status(self, message: str):
         """Emit status message via signal or callback."""
+        print(f"[INDEX] {message}")  # Add debug print
         self.status_message.emit(message)
         if self._status_callback:
             try:
@@ -166,8 +167,10 @@ class IndexManager(QtCore.QObject):
         """
         if self._index_running:
             self._emit_status("Index already running")
+            print("[INDEX] Index already running, skipping")
             return False
         
+        print("[INDEX] Starting full index rebuild...")
         self._index_running = True
         self._pending_result = None
         self._pending_error = None
@@ -196,6 +199,7 @@ class IndexManager(QtCore.QObject):
             QtCore.Qt.QueuedConnection
         )
         
+        print("[INDEX] Starting thread...")
         self._index_thread.start()
         
         # Log the index operation
@@ -274,6 +278,7 @@ class IndexManager(QtCore.QObject):
     @QtCore.Slot(int, str)
     def _on_index_finished(self, duration_ms: int, status: str) -> None:
         """Handle index worker completion."""
+        print(f"[INDEX] Worker finished: {duration_ms}ms, {status}")
         self._pending_result = (duration_ms, status)
         if self._index_thread and self._index_thread.isRunning():
             self._index_thread.quit()
@@ -281,6 +286,7 @@ class IndexManager(QtCore.QObject):
     @QtCore.Slot(str)
     def _on_index_error(self, message: str) -> None:
         """Handle index worker error."""
+        print(f"[INDEX] Worker error: {message}")
         self._pending_error = message
         if self._index_thread and self._index_thread.isRunning():
             self._index_thread.quit()
@@ -288,6 +294,7 @@ class IndexManager(QtCore.QObject):
     @QtCore.Slot()
     def _on_thread_finished(self) -> None:
         """Cleanup after thread finishes."""
+        print("[INDEX] Thread finished, cleaning up...")
         try:
             if self._index_worker is not None:
                 self._index_worker.deleteLater()
@@ -300,10 +307,12 @@ class IndexManager(QtCore.QObject):
         
         # Emit results
         if self._pending_error:
+            print(f"[INDEX] Emitting error: {self._pending_error}")
             self.index_error.emit(self._pending_error)
             self._pending_error = None
         elif self._pending_result:
             duration_ms, status = self._pending_result
+            print(f"[INDEX] Emitting finished: {duration_ms}ms, {status}")
             self.index_finished.emit(duration_ms, status)
             self._emit_status(f"Index finished in {duration_ms}ms")
             
@@ -354,30 +363,3 @@ class IndexManager(QtCore.QObject):
         # Schedule batched cache invalidation
         self._schedule_batch_invalidation(poster_key)
         self.index_updated.emit()
-
-    def _on_thread_finished(self) -> None:
-        """Cleanup after thread finishes."""
-        try:
-            if self._index_worker is not None:
-                self._index_worker.deleteLater()
-            if self._index_thread is not None:
-                self._index_thread.deleteLater()
-        finally:
-            self._index_worker = None
-            self._index_thread = None
-            self._index_running = False
-        
-        # Emit results
-        if self._pending_error:
-            self.index_error.emit(self._pending_error)
-            self._pending_error = None
-        elif self._pending_result:
-            duration_ms, status = self._pending_result
-            self.index_finished.emit(duration_ms, status)
-            self._emit_status(f"Index finished in {duration_ms}ms")
-            
-            # Invalidate dashboard cache on successful index
-            self._invalidate_dashboard_cache(CacheInvalidationReason.INDEX_CHANGED)
-            
-            self.index_updated.emit()
-            self._pending_result = None

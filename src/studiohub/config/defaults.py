@@ -35,7 +35,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "printing": {
         "is_primary_printer": True,
 
-        # Print behavior (NEW)
+        # Print behavior
         "default_size": "12x18",
         "allow_pairing_12x18": True,
         "render_dpi": 300,
@@ -56,5 +56,18 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     },
     "ui": {
         "show_excluded_as_missing": False,
+    },
+    "studio_variants": {
+        # Each variant has:
+        # - keywords: list of strings that trigger detection
+        # - label: display name in UI
+        "Light": {
+            "keywords": ["light"],
+            "label": "Light"
+        },
+        "Dark": {
+            "keywords": ["dark"],
+            "label": "Default"
+        },
     },
 }
