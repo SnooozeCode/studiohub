@@ -4,21 +4,15 @@ from pathlib import Path
 from typing import Dict, Any, Optional, Tuple, Set
 
 from studiohub.constants import PRINT_SIZES
+from studiohub.utils.text.normalization import normalize_poster_name, normalize_studio_name, normalize_background_name
 
 # =====================================================
 # Constants
 # =====================================================
 
 MASTER_EXTENSIONS = {".ai", ".psd", ".psb"}
-IGNORED_FILENAMES = {
-    "desktop.ini",
-    ".ds_store",
-    "thumbs.db",
-}
-VALID_PRINT_EXTENSIONS = {
-    ".tif",
-    ".tiff",
-}
+IGNORED_FILENAMES = {"desktop.ini", ".ds_store", "thumbs.db"}
+VALID_PRINT_EXTENSIONS = {".tif", ".tiff"}
 
 # Archive backgrounds - these should NEVER be treated as studio variants
 ARCHIVE_BACKGROUNDS = {
@@ -105,9 +99,27 @@ def _detect_studio_variant(filename: str, stem: str) -> Optional[Tuple[str, bool
 # =====================================================
 
 def scan_single_poster(poster_dir: Path, config_manager=None) -> Dict[str, Any]:
-    """Scan a single poster, detecting both archive backgrounds and studio variants."""
-    display_name = poster_dir.name.replace("_", " ")
-    
+    """
+    Scan a single poster, detecting both archive backgrounds and studio variants.
+    Integrates normalized naming based on poster type.
+    """
+    # =====================================================
+    # 1. Name Normalization
+    # =====================================================
+    if config_manager:
+        # For studio posters, use franchise detection
+        # (Ensure normalize_studio_name is imported/defined)
+        normalized = normalize_studio_name(poster_dir.name)
+        display_name = normalized["display_name"]
+    else:
+        # For archive, just format nicely
+        # (Ensure normalize_poster_name is imported/defined)
+        normalized = normalize_poster_name(poster_dir.name)
+        display_name = normalized["display_name"]
+
+    # =====================================================
+    # 2. Master and Web Detection
+    # =====================================================
     master_dir = poster_dir / "MASTER"
     web_dir = poster_dir / "WEB"
 
@@ -123,7 +135,9 @@ def scan_single_poster(poster_dir: Path, config_manager=None) -> Dict[str, Any]:
     # Determine if this is archive or studio
     is_studio = config_manager is not None
     
-    # First pass: collect all variants across ALL sizes
+    # =====================================================
+    # 3. Variant Discovery (First Pass)
+    # =====================================================
     all_variants: Set[str] = set()
     variant_files: Dict[str, Dict[str, Any]] = {}  # variant_name -> {path, label, etc.}
     
@@ -163,7 +177,9 @@ def scan_single_poster(poster_dir: Path, config_manager=None) -> Dict[str, Any]:
                             "is_default": is_default,
                         }
     
-    # Now process each size with knowledge of all variants
+    # =====================================================
+    # 4. Size Processing (Second Pass)
+    # =====================================================
     for size in PRINT_SIZES:
         size_dir = print_root / size
 
@@ -177,7 +193,6 @@ def scan_single_poster(poster_dir: Path, config_manager=None) -> Dict[str, Any]:
             sizes[size] = entry
             continue
 
-        # Filter valid print files ONLY
         valid_files = [
             p for p in size_dir.iterdir()
             if (
@@ -188,7 +203,6 @@ def scan_single_poster(poster_dir: Path, config_manager=None) -> Dict[str, Any]:
         ]
 
         entry["exists"] = bool(valid_files)
-
         tifs = [p for p in valid_files if p.suffix.lower() in {".tif", ".tiff"}]
         
         if not tifs:
@@ -198,12 +212,8 @@ def scan_single_poster(poster_dir: Path, config_manager=None) -> Dict[str, Any]:
         inferred_backgrounds: Dict[str, Dict[str, Any]] = {}
         
         if is_studio:
-            # =====================================================
-            # STUDIO POSTERS - Detect variants
-            # Only show children if there's MORE THAN ONE variant across ALL sizes
-            # =====================================================
+            # STUDIO logic: Only show backgrounds if there's > 1 variant total
             if len(all_variants) > 1:
-                # Multiple variants exist across sizes - show children
                 for tif in tifs:
                     stem = tif.stem.lower()
                     filename = tif.name.lower()
@@ -211,8 +221,6 @@ def scan_single_poster(poster_dir: Path, config_manager=None) -> Dict[str, Any]:
                     result = _detect_studio_variant(filename, stem)
                     if result:
                         variant_name, is_default = result
-                        
-                        # Use the stored file info
                         if variant_name in variant_files:
                             inferred_backgrounds[variant_name] = {
                                 "exists": True,
@@ -222,32 +230,27 @@ def scan_single_poster(poster_dir: Path, config_manager=None) -> Dict[str, Any]:
                                 "is_default": is_default,
                             }
                 
-                # Sort variants: Default first, then alphabetically
                 if inferred_backgrounds:
                     sorted_backgrounds = sorted(
                         inferred_backgrounds.items(),
                         key=lambda x: (0 if x[1].get("is_default", False) else 1, x[0])
                     )
-                    inferred_backgrounds = dict(sorted_backgrounds)
-                    entry["backgrounds"] = inferred_backgrounds
+                    entry["backgrounds"] = dict(sorted_backgrounds)
                 else:
                     entry["files"] = [str(p) for p in tifs]
             else:
-                # Single variant across ALL sizes - no children needed
                 entry["files"] = [str(p) for p in tifs]
                 
         else:
-            # =====================================================
-            # ARCHIVE POSTERS - Detect backgrounds
-            # Always show children for backgrounds (multiple backgrounds per size)
-            # =====================================================
+            # ARCHIVE logic: Always group by background pattern
             for tif in tifs:
                 stem = tif.stem.lower()
-                
                 archive_bg = _is_archive_background(stem)
                 if archive_bg:
-                    bg_key = archive_bg.replace(" ", "")
-                    inferred_backgrounds[bg_key] = _bg(archive_bg, tif)
+                    normalized = normalize_background_name(archive_bg)
+                    bg_key = normalized["key"]  # "antique_parchment"
+                    bg_label = normalized["label"]  # "Antique Parchment"
+                    inferred_backgrounds[bg_key] = _bg(bg_label, tif)
             
             if inferred_backgrounds:
                 entry["backgrounds"] = inferred_backgrounds
@@ -264,7 +267,6 @@ def scan_single_poster(poster_dir: Path, config_manager=None) -> Dict[str, Any]:
         },
         "sizes": sizes,
     }
-
 
 # =====================================================
 # Helpers

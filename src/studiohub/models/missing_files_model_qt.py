@@ -65,14 +65,11 @@ class MissingFilesModelQt(QtCore.QObject):
         self.scan_started.emit(source)
 
         try:
-            print(f"[DEBUG] Loading index for {source}...")
             index = self._load_index()
-            print(f"[DEBUG] Index loaded, has {len(index.get('posters', {}).get(source, {}))} posters")
             
             exclusions = self._get_exclusions(source)
             
             if source == "archive":
-                print("[DEBUG] Building archive status...")
                 new_data = self._build_archive_status(index, exclusions)
                 
                 # Compare safely
@@ -80,26 +77,26 @@ class MissingFilesModelQt(QtCore.QObject):
                     self._cache_archive = new_data
                     
             else:  # studio
-                print("[DEBUG] Building studio status...")
+
                 new_data = self._build_studio_status(index, exclusions)
-                print(f"[DEBUG] Studio status built, has {len(new_data)} posters")
+
                 
                 # Compare safely
                 try:
                     if self._cache_studio != new_data:
                         self._cache_studio = new_data
                 except TypeError as e:
-                    print(f"[DEBUG] Comparison error: {e}, assuming changed")
+
                     self._cache_studio = new_data
 
             # Emit the data from cache
             cache_data = self.get_cache(source)
-            print(f"[DEBUG] Emitting data for {source}, {len(cache_data)} posters")
+
             self.scan_finished.emit(source, cache_data)
 
         except Exception as e:
             import traceback
-            print(f"[ERROR] in refresh for {source}: {e}")
+
             traceback.print_exc()
             self.scan_error.emit(source, str(e))
 
@@ -213,7 +210,6 @@ class MissingFilesModelQt(QtCore.QObject):
     def _build_studio_status(self, index: Dict[str, Any], exclusions: Dict[str, Set[str]]) -> Dict[str, Any]:
         """Build status data for studio posters, including ALL variants."""
         posters = index.get("posters", {}).get("studio", {})
-        print(f"[DEBUG] _build_studio_status: Found {len(posters)} studio posters")
         
         out: Dict[str, Any] = {}
 

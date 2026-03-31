@@ -169,23 +169,15 @@ class PosterIndexWorker(QtCore.QObject):
         out = {}
         if not root.exists():
             return out
-
-        print(f"[WORKER] Scanning {source} root: {root}")
-        
         # Only pass config_manager for studio posters
         config_to_pass = self.config_manager if source == "studio" else None
-        
-        # DEBUG: Print what we're passing
-        print(f"[WORKER] {source} - config_to_pass = {config_to_pass is not None}")
 
         for d in root.iterdir():
             if d.is_dir():
-                print(f"[WORKER]   Scanning poster: {d.name}")
                 try:
                     data = scan_single_poster(d, config_manager=config_to_pass)
                     
                     if not isinstance(data, dict):
-                        print(f"[WORKER]     ERROR: scan_single_poster returned non-dict: {type(data)}")
                         continue
                         
                     fingerprint = self._poster_fingerprint(d)
@@ -199,7 +191,6 @@ class PosterIndexWorker(QtCore.QObject):
                     out[d.name] = data
                     
                 except Exception as e:
-                    print(f"[WORKER]     ERROR scanning {d.name}: {e}")
                     import traceback
                     traceback.print_exc()
                     continue

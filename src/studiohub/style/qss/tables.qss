@@ -28,7 +28,7 @@ QTreeView::item:selected,
 QTableView::item:selected,
 QListView::item:selected {
     background-color: __ACCENT__;
-    color: __TEXT_PRIMARY__;
+    color: __ACCENT__;
 }
 
 /* ============================
@@ -87,9 +87,7 @@ QTreeWidget[role="missing-tree"] QHeaderView::section:hover {
     background-color: __SURFACE_HOVER__;
 }
 
-#MissingFilesView QTreeView::item:selected {
-    background-color: __SURFACE_ACTIVE__;
-}
+
 
 /* ============================
 Log Tables (Print Jobs, Logs)
@@ -111,4 +109,69 @@ QTableView[role="log-table"]::item:selected {
 /* Row density override */
 QTableView[row_profile="standard"] {
     gridline-color: __BORDER__;
+}
+/* ============================
+Missing Files Tree - Minimal Selection
+============================ */
+
+QTreeWidget[role="missing-tree"] {
+    background-color: __BG_SURFACE__;
+    border: none;
+    outline: none;
+    show-decoration-selected: 0;  /* This prevents the branch indicator from showing on selection */
+}
+
+/* Override the global selection styling */
+QTreeWidget[role="missing-tree"]::item,
+QTreeWidget[role="missing-tree"]::item:selected,
+QTreeWidget[role="missing-tree"]::item:selected:active,
+QTreeWidget[role="missing-tree"]::item:selected:!active {
+    background-color: transparent !important;
+    color: __TEXT_PRIMARY__ !important;
+}
+
+/* Remove hover effects */
+QTreeWidget[role="missing-tree"]::item:hover {
+    background-color: transparent !important;
+}
+
+/* Row-level styling - remove borders from individual items */
+QTreeWidget[role="missing-tree"]::item {
+    border: none;
+    padding: 0 10px;
+    margin: 0;
+}
+
+/* Selection indicator - ONLY on the first column */
+QTreeWidget[role="missing-tree"]::item:selected {
+    border-left: none;  /* Remove border from all columns */
+}
+
+/* Remove focus outline */
+QTreeWidget[role="missing-tree"]:focus,
+QTreeWidget[role="missing-tree"]::item:focus {
+    outline: none;
+}
+
+/* Ensure header doesn't get the indicator */
+QTreeWidget[role="missing-tree"]::header {
+    border-left: none;
+}
+
+/* Keep header styling */
+QTreeWidget[role="missing-tree"]::header {
+    background: transparent;
+}
+
+QTreeWidget[role="missing-tree"] QHeaderView::section {
+    background-color: __BG_HEADER__;
+    color: __TEXT_PRIMARY__;
+    min-height: 45px;
+    padding: 0 12px;
+    border-bottom: 1px solid __BORDER__;
+    font-weight: 600;
+}
+
+QTreeWidget[role="missing-tree"] QHeaderView::section:hover {
+    background-color: __SURFACE_HOVER__;
 }

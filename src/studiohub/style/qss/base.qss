@@ -259,3 +259,16 @@ Emphasis
 QLabel[emphasis="strong"] {
     font-weight: 600;
 }
+
+/* In studiohub/style/qss/base.qss */
+/* Update or add these rules if they don't exist: */
+
+/* Remove default focus rectangles */
+*:focus {
+    outline: none;
+}
+
+/* Ensure no blue selection bleed */
+QWidget:focus {
+    outline: none;
+}

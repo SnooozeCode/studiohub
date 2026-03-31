@@ -23,18 +23,6 @@ class ConfigManager:
     def __init__(self):
         self.path: Path = get_config_path()
         self.data: AppConfig = load_or_create(self.path)
-        
-        # Debug - print the structure to see what's wrong
-        print(f"\n[CONFIG DEBUG] Config loaded from {self.path}")
-        print(f"[CONFIG DEBUG] Type of self.data: {type(self.data)}")
-        if isinstance(self.data, dict):
-            print(f"[CONFIG DEBUG] Keys in config: {list(self.data.keys())}")
-            for key, value in self.data.items():
-                print(f"  {key}: {type(value)}")
-                if key == "studio_variants":
-                    print(f"    Content: {value}")
-        else:
-            print(f"[CONFIG DEBUG] self.data is NOT a dict!")
 
     # ---------------------------
     # Persistence

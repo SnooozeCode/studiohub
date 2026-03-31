@@ -89,7 +89,10 @@ class ViewInitializer:
         # Missing Files
         # -----------------------------
 
-        view_missing = MissingFilesViewQt(parent=self._parent)
+        view_missing = MissingFilesViewQt(
+            config_manager=self._deps.config_manager,  # Add this
+            parent=self._parent
+        )
 
         # -----------------------------
         # Print Jobs

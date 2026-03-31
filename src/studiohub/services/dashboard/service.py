@@ -305,6 +305,9 @@ class DashboardService:
         
         return archive_stats, studio_stats
 
+    # In studiohub/services/dashboard/service.py
+    # Update _compute_source_completeness method:
+
     def _compute_source_completeness(self, posters: dict, *, source: str) -> CompletenessSlice:
         total = 0
         issues = 0
@@ -331,16 +334,59 @@ class DashboardService:
             if not web_status:
                 missing_for_poster += 1
             
-            # Check each print size (skip excluded)
+            # ===== NEW: Track variants across all sizes =====
+            # For studio posters, we need to count missing variants
+            all_variants = set()
+            variant_presence = {}  # variant -> set of sizes where it exists
+            
+            # First pass: collect all variants and where they exist
             for size in PRINT_SIZES:
                 if size in excluded_sizes:
-                    continue  # Skip excluded sizes
+                    continue
                 
                 size_meta = sizes.get(size, {})
+                backgrounds = size_meta.get("backgrounds", {})
                 
-                # Check if size exists (has any files)
-                if not size_meta.get("exists", False):
-                    missing_for_poster += 1
+                for variant_key, variant_rec in backgrounds.items():
+                    if not isinstance(variant_rec, dict):
+                        continue
+                    
+                    variant_key_str = str(variant_key)
+                    all_variants.add(variant_key_str)
+                    
+                    if variant_key_str not in variant_presence:
+                        variant_presence[variant_key_str] = set()
+                    
+                    if variant_rec.get("exists", False):
+                        variant_presence[variant_key_str].add(size)
+            
+            # For studio posters, count missing variants
+            if source == "studio" and all_variants:
+                # For each variant, check which sizes it's missing from
+                for variant_key in all_variants:
+                    existing_sizes = variant_presence.get(variant_key, set())
+                    
+                    for size in PRINT_SIZES:
+                        if size in excluded_sizes:
+                            continue
+                        
+                        # If this variant doesn't exist for this size, it's a missing file
+                        if size not in existing_sizes:
+                            missing_for_poster += 1
+            
+            # Check each print size (skip excluded) - only for sizes without variants
+            for size in PRINT_SIZES:
+                if size in excluded_sizes:
+                    continue
+                
+                size_meta = sizes.get(size, {})
+                backgrounds = size_meta.get("backgrounds", {})
+                
+                # If this size has backgrounds (variants), we already counted them above
+                # Only check the size itself if it has NO backgrounds (fallback files)
+                if not backgrounds:
+                    if not size_meta.get("exists", False):
+                        missing_for_poster += 1
             
             if missing_for_poster > 0:
                 issues += 1
@@ -354,7 +400,7 @@ class DashboardService:
             complete_fraction=float(max(0.0, min(1.0, frac))),
             total_posters=int(total),
         )
-            
+                
     def _build_studio_mood(
         self,
         *,

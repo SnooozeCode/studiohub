@@ -3,9 +3,14 @@
 from __future__ import annotations
 
 from typing import Any, Dict, Optional
+import subprocess
+import os
+from pathlib import Path
+
 from PySide6 import QtCore, QtWidgets, QtGui
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QIcon, QColor
+from PySide6.QtWidgets import QMenu
+from PySide6.QtGui import QIcon, QColor, QAction
 
 from studiohub.style.utils.repolish import repolish
 from studiohub.style.typography.rules import apply_view_typography, apply_header_typography, apply_typography
@@ -47,33 +52,38 @@ class CenteredIconDelegate(QtWidgets.QStyledItemDelegate):
 
     def paint(self, painter, option, index):
         painter.save()
-
-        # Draw selection/background like Qt would
+        
+        # Draw background
         opt = QtWidgets.QStyleOptionViewItem(option)
         self.initStyleOption(opt, index)
-
-        # Prevent Qt from drawing text/icon itself
-        opt.text = ""
-        opt.icon = QtGui.QIcon()
-
-        style = opt.widget.style()
-        style.drawControl(
-            QtWidgets.QStyle.CE_ItemViewItem,
-            opt,
-            painter,
-            opt.widget,
-        )
-
+        
         icon = index.data(Qt.DecorationRole)
-        if isinstance(icon, QtGui.QIcon):
+        
+        if icon and isinstance(icon, QtGui.QIcon):
+            # Draw icon only
+            opt.text = ""
+            opt.icon = QtGui.QIcon()
+            style = opt.widget.style()
+            style.drawControl(QtWidgets.QStyle.CE_ItemViewItem, opt, painter, opt.widget)
+            
             rect = option.rect
-            size = QtCore.QSize(self.ICON_SIZE, self.ICON_SIZE)
-            pm = icon.pixmap(size)
-
-            x = rect.x() + (rect.width() - size.width()) // 2
-            y = rect.y() + (rect.height() - size.height()) // 2
+            pm = icon.pixmap(QtCore.QSize(self.ICON_SIZE, self.ICON_SIZE))
+            x = rect.x() + (rect.width() - self.ICON_SIZE) // 2
+            y = rect.y() + (rect.height() - self.ICON_SIZE) // 2
             painter.drawPixmap(x, y, pm)
-
+        else:
+            # Draw text (for em dash)
+            text = index.data(Qt.DisplayRole)
+            if text:
+                painter.setPen(option.palette.text().color())
+                font = painter.font()
+                font.setPixelSize(12)
+                painter.setFont(font)
+                painter.drawText(option.rect, Qt.AlignCenter, text)
+            else:
+                # Fall back to default
+                super().paint(painter, option, index)
+        
         painter.restore()
 
 
@@ -101,6 +111,7 @@ class MissingFilesViewQt(QtWidgets.QFrame):
         self._active_source = "archive"
 
         self._config = config_manager
+
         # =================================================
         # STATE
         # =================================================
@@ -207,6 +218,11 @@ class MissingFilesViewQt(QtWidgets.QFrame):
         hi.setTextAlignment(0, Qt.AlignVCenter | Qt.AlignLeft)
         for col in range(1, 6):
             hi.setTextAlignment(col, Qt.AlignCenter)
+
+                    
+        # Enable context menu
+        self.tree.setContextMenuPolicy(QtCore.Qt.CustomContextMenu)
+        self.tree.customContextMenuRequested.connect(self._show_context_menu)
 
         # =================================================
         # Table surface frame
@@ -398,7 +414,6 @@ class MissingFilesViewQt(QtWidgets.QFrame):
 
     def set_data(self, source: str, data: Dict[str, Any]) -> None:
         """Set missing data and trigger render."""
-        print(f"[DEBUG] set_data called for {source}, data keys: {list(data.keys())[:5]}...")
         self._data[source] = data or {}
         
         # Only update UI if this is the current source
@@ -412,14 +427,14 @@ class MissingFilesViewQt(QtWidgets.QFrame):
                     missing = info.get("missing", {})
                     if missing.get("backgrounds"):
                         has_backgrounds = True
-                        print(f"[DEBUG] Poster {folder} has backgrounds: {list(missing.get('backgrounds', {}).keys())}")
+
                         break
                 
                 if has_backgrounds:
-                    print("[DEBUG] Data contains backgrounds, will show children")
-                
-                self.lbl_empty.setVisible(False)
-                self.tree.setVisible(True)
+                    
+                    self.lbl_empty.setVisible(False)
+                    self.tree.setVisible(True)
+            
                 # Defer render to avoid blocking
                 if not self._is_rendering:
                     QtCore.QTimer.singleShot(0, self._render)
@@ -558,13 +573,19 @@ class MissingFilesViewQt(QtWidgets.QFrame):
 
     def _get_excluded_sizes(self, poster_key: str) -> set:
         """Get excluded sizes for a poster from config."""
-        if not self._config:
+        # If we don't have a config, try to get it from the main window
+        config = self._config
+        if config is None:
+            main_window = self.window()
+            if main_window and hasattr(main_window, '_deps'):
+                config = main_window._deps.config_manager
+        
+        if not config:
             return set()
         
-        source_exclusions = self._config.get("poster_exclusions", self._source, {})
+        source_exclusions = config.get("poster_exclusions", self._source, {})
         excluded = source_exclusions.get(poster_key, [])
         return set(excluded)
-
 
     def _render(self) -> None:
         """Render the tree with optimizations."""
@@ -637,8 +658,8 @@ class MissingFilesViewQt(QtWidgets.QFrame):
 
                     for idx, size in enumerate(PRINT_SIZES, start=3):
                         if size in excluded_sizes:
-                            parent.setIcon(idx, ok_icon)
-                            parent.setText(idx, "")
+                            parent.setText(idx, "—")  # em dash
+                            parent.setIcon(idx, QtGui.QIcon())  # clear any icon
                             parent.setTextAlignment(idx, Qt.AlignCenter)
                             continue
                         
@@ -701,10 +722,28 @@ class MissingFilesViewQt(QtWidgets.QFrame):
                     if backgrounds_to_show:
                         parent.setChildIndicatorPolicy(QtWidgets.QTreeWidgetItem.ShowIndicator)
                         
-                        # Sort backgrounds alphabetically by label
+                        # ===== CUSTOM SORT ORDER =====
+                        # Define sort priority: Default first, then Light, then Alternate, then alphabetically
+                        def get_sort_key(item):
+                            bg_key = item[0]
+                            bg_label = item[1]["label"]
+                            
+                            # Priority mapping
+                            if bg_label == "Default" or bg_key == "Default":
+                                return (0, bg_label)  # Default always first
+                            elif bg_label == "Light" or bg_key == "Light":
+                                return (1, bg_label)  # Light second
+                            elif bg_label == "Alternate" or bg_key == "Alternate" or bg_label == "Alternative":
+                                return (2, bg_label)  # Alternate third
+                            elif bg_label == "Dark" or bg_key == "Dark":
+                                return (3, bg_label)  # Dark fourth (if you have it)
+                            else:
+                                return (4, bg_label.lower())  # Everything else alphabetically
+                        
+                        # Sort backgrounds using custom sort key
                         sorted_backgrounds = sorted(
                             backgrounds_to_show.items(),
-                            key=lambda x: x[1]["label"].lower()
+                            key=get_sort_key
                         )
                         
                         for bg_key, bg_info in sorted_backgrounds:
@@ -763,6 +802,232 @@ class MissingFilesViewQt(QtWidgets.QFrame):
         if self._pending_refresh:
             QtCore.QTimer.singleShot(0, self._render)
 
+    def _show_context_menu(self, position):
+        """Show context menu for the selected poster."""
+        # Get the item at the click position
+        item = self.tree.itemAt(position)
+        if not item:
+            return
+        
+        # Get the poster key (folder name) from the item
+        poster_key = None
+        if item.parent() is None:
+            # This is a top-level poster item
+            poster_key = self._get_poster_key_from_item(item)
+        else:
+            # This is a child (background/variant) item
+            poster_key = self._get_poster_key_from_item(item.parent())
+        
+        if not poster_key:
+            return
+        
+        # Create the context menu
+        menu = QMenu(self)
+        
+        # ===== ADD "OPEN IN FOLDER" OPTION =====
+        open_action = QAction("Open in Folder", menu)
+        open_action.setData(poster_key)
+        open_action.triggered.connect(self._on_open_in_folder)
+        menu.addAction(open_action)
+        
+        menu.addSeparator()  # Add separator after open action
+        
+        # Get current exclusions for this poster
+        excluded_sizes = self._get_excluded_sizes(poster_key)
+        
+        # Create submenu for size exclusions
+        exclude_menu = menu.addMenu("Exclude from sizes...")
+        
+        # Add options for each print size
+        for size in PRINT_SIZES:
+            action = QAction(PRINT_SIZES_DISPLAY[size], exclude_menu)
+            action.setCheckable(True)
+            action.setChecked(size in excluded_sizes)
+            action.setData({"poster": poster_key, "size": size})
+            action.triggered.connect(self._on_exclude_size_toggled)
+            exclude_menu.addAction(action)
+        
+        # Add separator
+        menu.addSeparator()
+        
+        # Add option to clear all exclusions for this poster
+        if excluded_sizes:
+            clear_action = QAction("Clear all exclusions", menu)
+            clear_action.setData(poster_key)
+            clear_action.triggered.connect(self._on_clear_exclusions)
+            menu.addAction(clear_action)
+        
+        # Show the menu
+        menu.exec_(self.tree.viewport().mapToGlobal(position))
+
+    def _get_poster_key_from_item(self, item):
+        """Extract the poster key (folder name) from a tree widget item."""
+        # Get the display name from the item
+        display_name = item.text(0)
+        
+        # First try to find in the index (most reliable)
+        posters = self._index.get("posters", {}).get(self._source, {})
+        for folder_key, meta in posters.items():
+            if meta.get("display_name") == display_name:
+                return folder_key
+        
+        # Fallback: try to find in the current data
+        current_data = self._data.get(self._source, {})
+        for folder_key, folder_data in current_data.items():
+            # Some data structures might have display_name at the top level
+            if isinstance(folder_data, dict):
+                if folder_data.get("display_name") == display_name:
+                    return folder_key
+        
+        # Last resort: try to normalize the display name to a folder key
+        # Convert display name to potential folder key by lowercasing and replacing spaces with underscores
+        potential_key = display_name.lower().replace(" ", "_")
+        if potential_key in posters:
+            return potential_key
+        
+        print(f"[DEBUG] Could not find poster key for display name: {display_name}")
+        return display_name
+    
+    def _get_poster_path(self, poster_key: str) -> Optional[Path]:
+        """Get the full filesystem path for a poster."""
+        # If we don't have a config, try to get it from the main window
+        config = self._config
+        if config is None:
+            # Try to get config from main window
+            main_window = self.window()
+            if main_window and hasattr(main_window, '_deps'):
+                config = main_window._deps.config_manager
+            if config is None:
+                print("[DEBUG] No config available for path resolution")
+                return None
+        
+        # Get the root paths from index or config
+        posters = self._index.get("posters", {}).get(self._source, {})
+        if poster_key not in posters:
+            return None
+        
+        # Get the root path for the source
+        if self._source == "archive":
+            root_path = config.get("paths", "archive_root", "")
+        else:
+            root_path = config.get("paths", "studio_root", "")
+        
+        if not root_path:
+            print(f"[DEBUG] No root path configured for {self._source}")
+            return None
+        
+        # Get the folder name from index or use the key
+        poster_meta = posters.get(poster_key, {})
+        folder_name = poster_meta.get("folder_name", poster_key)
+        
+        path = Path(root_path) / folder_name
+        print(f"[DEBUG] Poster path: {path}")
+        return path
+
+    def _on_open_in_folder(self):
+        """Open the poster folder in file explorer."""
+        action = self.sender()
+        poster_key = action.data()
+        
+        if not poster_key:
+            return
+        
+        # Get the full path to the poster folder
+        poster_path = self._get_poster_path(poster_key)
+        
+        if not poster_path or not poster_path.exists():
+            print(f"[DEBUG] Poster folder not found: {poster_path}")
+            return
+        
+        # Open in file explorer based on platform
+        import sys
+        import subprocess
+        
+        try:
+            if sys.platform == 'win32':
+                # Windows: use explorer
+                subprocess.run(['explorer', str(poster_path)])
+            elif sys.platform == 'darwin':
+                # macOS: use open
+                subprocess.run(['open', str(poster_path)])
+            else:
+                # Linux: use xdg-open
+                subprocess.run(['xdg-open', str(poster_path)])
+        except Exception as e:
+            print(f"[DEBUG] Failed to open folder: {e}")
+
+    def _on_exclude_size_toggled(self, checked):
+        """Handle toggling a size exclusion for a poster."""
+        action = self.sender()
+        data = action.data()
+        poster_key = data["poster"]
+        size = data["size"]
+        
+        # Get config safely
+        config = self._get_config()
+        if not config:
+            print("[DEBUG] No config available to save exclusions")
+            return
+        
+        # Get current exclusions from config
+        exclusions = config.get("poster_exclusions", self._source, {})
+        poster_exclusions = set(exclusions.get(poster_key, []))
+        
+        if checked:
+            poster_exclusions.add(size)
+        else:
+            poster_exclusions.discard(size)
+        
+        # Update exclusions
+        if poster_exclusions:
+            exclusions[poster_key] = list(poster_exclusions)
+        else:
+            # Remove the poster from exclusions if empty
+            exclusions.pop(poster_key, None)
+        
+        # Save to config
+        config.set("poster_exclusions", self._source, exclusions)
+        config.save()
+        
+        # Refresh the view to show updated status
+        self.refresh_requested.emit(self._source)
+
+    def _on_clear_exclusions(self):
+        """Clear all exclusions for a poster."""
+        action = self.sender()
+        poster_key = action.data()
+        
+        # Get config safely
+        config = self._get_config()
+        if not config:
+            print("[DEBUG] No config available to clear exclusions")
+            return
+        
+        # Get current exclusions
+        exclusions = config.get("poster_exclusions", self._source, {})
+        
+        # Remove this poster from exclusions
+        if poster_key in exclusions:
+            del exclusions[poster_key]
+            config.set("poster_exclusions", self._source, exclusions)
+            config.save()
+            
+            # Refresh the view
+            self.refresh_requested.emit(self._source)
+
+    def _get_config(self):
+        """Get the config manager, trying multiple sources."""
+        if self._config is not None:
+            return self._config
+        
+        # Try to get from main window
+        main_window = self.window()
+        if main_window and hasattr(main_window, '_deps'):
+            self._config = main_window._deps.config_manager
+            return self._config
+        
+        return None
+    
     # =================================================
     # Helpers
     # =================================================

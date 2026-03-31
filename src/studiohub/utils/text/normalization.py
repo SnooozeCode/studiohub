@@ -1,262 +1,132 @@
-# studiohub/utils/text/normalization.py
-"""
-Text normalization utilities for StudioHub.
-
-Provides:
-- Name normalization for posters, backgrounds, and studio content
-- Franchise detection and alias resolution
-- Acronym preservation
-"""
-
 from __future__ import annotations
-
 import re
-from typing import Dict, Tuple, Optional
+from typing import Dict, Tuple
 
 # =====================================================
-# Constants
+# Constants (Maintained for External Exports)
 # =====================================================
 
-ACRONYMS = {
-    "nasa",
-    "cs",
-    "fps",
-}
+ACRONYMS = {"nasa", "cs", "fps", "ram", "tv", "id", "usa"}
 
-# Filesystem-safe → display franchise names
+# Renamed for internal use but exported as FRANCHISE_ALIASES for external files
 FRANCHISE_ALIASES: Dict[str, str] = {
-    "ram": "Rick and Morty",
     "rickandmorty": "Rick and Morty",
-    "cs": "Counter-Strike",
-    "counterstrike": "Counter-Strike",
+    "fallout": "Fallout",
+    "valorant": "Valorant",
+    "nasa": "NASA",
     "callofduty": "Call of Duty",
+    "fortnite": "Fortnite",
+    "counterstrike": "Counter-Strike",
+    "cs": "Counter-Strike",
+    "destiny": "Destiny",
 }
 
 # =====================================================
-# Core helpers
+# Core Formatting Engine
 # =====================================================
-
-_WORD_RE = re.compile(
-    r"[A-Z]+(?=[A-Z][a-z])|[A-Z]?[a-z]+|[0-9]+"
-)
-
 
 def split_words(text: str) -> list[str]:
     """
-    Split CamelCase, snake_case, kebab-case, and glued words into tokens.
-    
-    Examples:
-        "AnatomicalBody" → ["Anatomical", "Body"]
-        "antique_parchment" → ["antique", "parchment"]
-        "RAM_GetYourShit" → ["RAM", "Get", "Your", "Shit"]
+    Maintained for external use. 
+    Uses the improved regex to tokenize strings.
     """
-    if not text:
-        return []
-    text = text.replace("_", " ").replace("-", " ")
-    return _WORD_RE.findall(text)
+    if not text: return []
+    # Handle 'and' spacing
+    text = re.sub(r'([a-z])(and)([A-Z])', r'\1 \2 \3', text, flags=re.IGNORECASE)
+    # Tokenize CamelCase and Acronyms
+    return re.findall(r'[A-Z][a-z]+|[A-Z]{2,}(?=[A-Z][a-z]|$)|[A-Z]+|[a-z]+|[0-9]+', text)
 
-
-def normalize_words(words: list[str]) -> Tuple[str, str]:
-    """
-    Convert word list into (key, label).
-
-    key   → snake_case, lowercase, stable
-    label → Title Case with acronym preservation
-    
-    Examples:
-        ["Anatomical", "Body"] → ("anatomical_body", "Anatomical Body")
-        ["RAM", "Get", "Your", "Shit"] → ("ram_get_your_shit", "RAM Get Your Shit")
-    """
-    key_parts = []
-    label_parts = []
-
+def _format_text(text: str) -> str:
+    """Internal helper to join tokens into a clean label."""
+    words = split_words(text)
+    parts = []
     for w in words:
         lw = w.lower()
-        key_parts.append(lw)
-
-        if lw in ACRONYMS:
-            label_parts.append(w.upper())
-        else:
-            label_parts.append(w.capitalize())
-
-    key = "_".join(key_parts)
-    label = " ".join(label_parts)
-
-    return key, label
-
+        if lw == "and": parts.append("and")
+        elif lw in ACRONYMS or (w.isupper() and len(w) > 1): parts.append(w.upper())
+        else: parts.append(w.capitalize())
+    return " ".join(parts)
 
 # =====================================================
-# Poster / patent normalization
-# =====================================================
-
-def normalize_poster_name(raw: str) -> Dict[str, str]:
-    """
-    Normalize a poster or patent folder name.
-
-    Returns:
-      {
-        "key": "anatomical_body",
-        "label": "Anatomical Body"
-      }
-    """
-    words = split_words(raw)
-    key, label = normalize_words(words)
-    return {
-        "key": key,
-        "label": label,
-    }
-
-
-# =====================================================
-# Background normalization
-# =====================================================
-
-def normalize_background_name(raw: str) -> Dict[str, str]:
-    """
-    Normalize a background variant name.
-
-    Examples:
-      AntiqueParchment → antique_parchment / Antique Parchment
-      chalkboard       → chalkboard / Chalkboard
-    """
-    words = split_words(raw)
-    key, label = normalize_words(words)
-    return {
-        "key": key,
-        "label": label,
-    }
-
-
-# =====================================================
-# Studio poster normalization
+# Exported Functions (Maintained for Backwards Compat)
 # =====================================================
 
 def normalize_studio_name(raw: str) -> Dict[str, str]:
     """
-    Normalize a studio poster name with franchise enrichment.
-
-    Returns:
-      {
-        "franchise_key": "rick_and_morty",
-        "franchise_label": "Rick and Morty",
-        "title_key": "get_your_shit_alt",
-        "title_label": "Get Your Shit Alt",
-        "display_name": "Rick and Morty - Get Your Shit Alt"
-      }
+    The new primary logic. 
+    1. Checks for '__' (New System)
+    2. Checks for FRANCHISE_ALIASES (Legacy System)
+    3. Fallback to clean TitleCase
     """
-    if not raw:
+    # New System (__ separator)
+    if "__" in raw:
+        series_raw, title_raw = raw.split("__", 1)
+        series_label = _format_text(series_raw)
+        title_label = _format_text(title_raw)
         return {
-            "franchise_key": "",
-            "franchise_label": "",
-            "title_key": "",
-            "title_label": "",
-            "display_name": "",
+            "display_name": f"{series_label} - {title_label}",
+            "key": raw.lower().replace("__", "_"),
+            "franchise_label": series_label,
+            "title_label": title_label
         }
 
-    s = raw.strip()
-
-    # Filesystem-normalized string for alias matching
-    fs = (
-        s.lower()
-        .replace("_", "")
-        .replace("-", "")
-        .replace(" ", "")
-    )
-
-    # Franchise detection
-    for alias_key, franchise_label in FRANCHISE_ALIASES.items():
-        if fs.startswith(alias_key):
-            remainder = s[len(alias_key):].lstrip("_- ")
-
-            title_words = split_words(remainder)
-            title_key, title_label = normalize_words(title_words)
-
-            franchise_words = split_words(franchise_label)
-            franchise_key, _ = normalize_words(franchise_words)
-
-            display_name = (
-                f"{franchise_label} - {title_label}"
-                if title_label
-                else franchise_label
-            )
-
+    # Legacy System (Franchise Mapping)
+    raw_lower = raw.lower()
+    for key, clean_label in FRANCHISE_ALIASES.items():
+        if raw_lower.startswith(key):
+            title_part = raw[len(key):].lstrip("_").lstrip("-")
+            title_label = _format_text(title_part)
             return {
-                "franchise_key": franchise_key,
-                "franchise_label": franchise_label,
-                "title_key": title_key,
-                "title_label": title_label,
-                "display_name": display_name,
+                "display_name": f"{clean_label} - {title_label}" if title_label else clean_label,
+                "key": f"{key}_{title_part.lower()}".strip("_"),
+                "franchise_label": clean_label,
+                "title_label": title_label
             }
 
-    # Fallback: no franchise detected
-    words = split_words(s)
-    title_key, title_label = normalize_words(words)
-
+    # Fallback
+    label = _format_text(raw)
     return {
-        "franchise_key": "",
+        "display_name": label,
+        "key": raw.lower(),
         "franchise_label": "",
-        "title_key": title_key,
-        "title_label": title_label,
-        "display_name": title_label,
+        "title_label": label
     }
 
-
-# =====================================================
-# Simple name normalization (for basic UI display)
-# =====================================================
+def normalize_poster_name(raw: str) -> Dict[str, str]:
+    """Alias for normalize_studio_name used by IndexManager."""
+    res = normalize_studio_name(raw)
+    # Add legacy field names if some older code expects 'label' instead of 'display_name'
+    res["label"] = res["display_name"]
+    return res
 
 def normalize_name(raw: str) -> str:
-    """
-    Convert filesystem-safe names into human-readable titles.
-    Simple version that doesn't return structured data.
+    """Returns just the string label. Used by Sidebar UI."""
+    return normalize_studio_name(raw)["display_name"]
 
-    Examples:
-      Anatomical_Body -> Anatomical Body
-      antique-parchment -> Antique Parchment
-    """
-    if not raw:
-        return ""
-
-    s = raw.replace("_", " ").replace("-", " ")
-    s = " ".join(s.split())  # collapse double spaces
-    return s.title()
-
+def normalize_background_name(raw: str) -> Dict[str, str]:
+    """Used for Studio variants in the UI."""
+    label = _format_text(raw)
+    return {"key": raw.lower(), "label": label}
 
 def normalize_patent_name(raw: str) -> str:
     """
-    Normalize patent filenames with background separator preserved.
-
-    Examples:
-      AnatomicalBody-Blueprint
-        -> Anatomical Body - Blueprint
-
-      AnatomicalBody-AntiqueParchment
-        -> Anatomical Body - Antique Parchment
+    Maintained for Archive Patent files (e.g., 'Tombstone-AntiqueParchment').
     """
-    if not raw:
-        return ""
-
-    # Split patent vs background ON FIRST HYPHEN ONLY
     if "-" in raw:
         left, right = raw.split("-", 1)
-    else:
-        left, right = raw, ""
+        return f"{_format_text(left)} - {_format_text(right)}"
+    return _format_text(raw)
 
-    # Normalize patent title
-    left_words = split_words(left.replace("_", " "))
-    left_norm = " ".join(
-        w.upper() if w.lower() in ACRONYMS else w.capitalize()
-        for w in left_words
-    )
+# =====================================================
+# New Archive-Specific Helpers (For your refined scanner)
+# =====================================================
 
-    if not right:
-        return left_norm
+def normalize_archive_folder(folder_name: str) -> str:
+    return _format_text(folder_name)
 
-    # Normalize background
-    right_words = split_words(right.replace("_", " "))
-    right_norm = " ".join(
-        w.upper() if w.lower() in ACRONYMS else w.capitalize()
-        for w in right_words
-    )
-
-    return f"{left_norm} - {right_norm}"
+def normalize_archive_filename(filename: str, folder_name: str) -> str:
+    stem = filename.rsplit('.', 1)[0]
+    # Replace the folder name prefix to isolate the background name
+    pattern = re.compile(re.escape(folder_name), re.IGNORECASE)
+    bg_raw = pattern.sub("", stem).strip("_").strip("-")
+    return _format_text(bg_raw) if bg_raw else "Standard"
